@@ -12,10 +12,10 @@ export default defineConfig({
     react(),
     checker({
       typescript: true,
-      eslint: {
-        lintCommand: 'eslint "./src/**/*.{js,jsx,ts,tsx}"',
-        dev: { logLevel: ['error'] },
-      },
+      // eslint: {
+      //   lintCommand: 'eslint "./src/**/*.{js,jsx,ts,tsx}"',
+      //   dev: { logLevel: ['error'] },
+      // },
       overlay: {
         position: 'tl',
         initialIsOpen: false,

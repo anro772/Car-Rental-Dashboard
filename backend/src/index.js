@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const { initializeDatabase } = require('./utils/database');
 
 const carsRouter = require('./routes/cars');
+const uploadRouter = require('./routes/upload');
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/api/cars', carsRouter);
+app.use('/api/upload', uploadRouter);
 
 // Test route
 app.get('/test', (req, res) => {

@@ -6,11 +6,14 @@ import Pagination from '@mui/material/Pagination';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import { Iconify } from 'src/components/iconify';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import toyotaCamryImage from 'src/assets/cars/toyota-camry.jpeg';
 
 import carsService, { Car } from 'src/services/carsService';
+import { ProductAdd } from '../product-add';
 import { ProductItem } from '../product-item';
 import { ProductSort } from '../product-sort';
 // } from '../product-cart-widget';
@@ -96,6 +99,7 @@ export function ProductsView() {
   const carsPerPage = 8;
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Fetch cars from the backend
   useEffect(() => {
@@ -219,9 +223,17 @@ export function ProductsView() {
 
   return (
     <DashboardContent>
-      <Typography variant="h4" sx={{ mb: 5 }}>
-        Car Fleet
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 5 }}>
+        <Typography variant="h4">Car Fleet</Typography>
+
+        <Button
+          variant="contained"
+          startIcon={<Iconify icon="eva:plus-fill" />} // Use Iconify instead of AddIcon
+          onClick={() => setAddDialogOpen(true)}
+        >
+          Add New Car
+        </Button>
+      </Box>
 
 
       <Box
@@ -318,6 +330,11 @@ export function ProductsView() {
           onSave={handleCarUpdated}
         />
       )}
+      <ProductAdd
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        onSave={handleCarUpdated} // Reuse the same handler you use for editing
+      />
     </DashboardContent>
   );
 }

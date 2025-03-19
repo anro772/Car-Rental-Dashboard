@@ -6,6 +6,9 @@ const { initializeDatabase } = require('./utils/database');
 
 const carsRouter = require('./routes/cars');
 const uploadRouter = require('./routes/upload');
+const customersRouter = require('./routes/customers');
+const rentalsRouter = require('./routes/rentals');
+const authRouter = require('./routes/auth');
 
 dotenv.config();
 
@@ -23,6 +26,9 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/cars', carsRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/customers', customersRouter);
+app.use('/api/rentals', rentalsRouter);
+app.use('/api/auth', authRouter);
 
 // Test route
 app.get('/test', (req, res) => {

@@ -1,7 +1,8 @@
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
 
@@ -9,13 +10,21 @@ import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-type UserTableToolbarProps = {
+type Props = {
   numSelected: number;
   filterName: string;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onDelete?: () => void;
+  onEmail?: () => void;
 };
 
-export function UserTableToolbar({ numSelected, filterName, onFilterName }: UserTableToolbarProps) {
+export function CustomerTableToolbar({
+  numSelected,
+  filterName,
+  onFilterName,
+  onDelete,
+  onEmail
+}: Props) {
   return (
     <Toolbar
       sx={{
@@ -30,36 +39,43 @@ export function UserTableToolbar({ numSelected, filterName, onFilterName }: User
       }}
     >
       {numSelected > 0 ? (
-        <Typography component="div" variant="subtitle1">
-          {numSelected} selected
-        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Delete">
+            <Button
+              color="error"
+              variant="contained"
+              startIcon={<Iconify icon="eva:trash-2-outline" />}
+              onClick={onDelete}
+            >
+              Delete ({numSelected})
+            </Button>
+          </Tooltip>
+
+          <Tooltip title="Send Email">
+            <Button
+              color="primary"
+              variant="contained"
+              startIcon={<Iconify icon="eva:email-outline" />}
+              onClick={onEmail}
+            >
+              Email
+            </Button>
+          </Tooltip>
+        </Stack>
       ) : (
         <OutlinedInput
-          fullWidth
           value={filterName}
           onChange={onFilterName}
-          placeholder="Search user..."
+          placeholder="Search customer..."
           startAdornment={
             <InputAdornment position="start">
-              <Iconify width={20} icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+              <Iconify
+                icon="eva:search-fill"
+                sx={{ color: 'text.disabled', width: 20, height: 20 }}
+              />
             </InputAdornment>
           }
-          sx={{ maxWidth: 320 }}
         />
-      )}
-
-      {numSelected > 0 ? (
-        <Tooltip title="Delete">
-          <IconButton>
-            <Iconify icon="solar:trash-bin-trash-bold" />
-          </IconButton>
-        </Tooltip>
-      ) : (
-        <Tooltip title="Filter list">
-          <IconButton>
-            <Iconify icon="ic:round-filter-list" />
-          </IconButton>
-        </Tooltip>
       )}
     </Toolbar>
   );

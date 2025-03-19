@@ -117,6 +117,34 @@ async function createTables(pool) {
         console.error('Error with database tables:', error);
         throw error;
     }
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS admins (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            role VARCHAR(50) DEFAULT 'admin',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Check if admins table has data
+    const [adminCount] = await pool.query('SELECT COUNT(*) as count FROM admins');
+
+    // Only insert sample admin data if admins table is empty
+    if (adminCount[0].count === 0) {
+        console.log('No admins found. Inserting sample admin data...');
+
+        // In a real app, you would hash these passwords
+        // For simplicity in this demo, we're using plain text
+        await pool.query(`
+            INSERT INTO admins (email, password, name, role) VALUES
+            ('admin@example.com', 'admin123', 'Admin User', 'admin'),
+            ('manager@example.com', 'manager123', 'Manager User', 'admin')
+        `);
+
+        console.log('Sample admin data inserted successfully');
+    }
 }
 
 module.exports = { createTables };

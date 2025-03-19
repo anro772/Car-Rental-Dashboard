@@ -111,7 +111,7 @@ export function ProductsView() {
         setError(null);
       } catch (err) {
         console.error('Failed to fetch cars:', err);
-        setError('Failed to load cars. Please try again later.');
+        setError('No cars loaded');
       } finally {
         setLoading(false);
       }

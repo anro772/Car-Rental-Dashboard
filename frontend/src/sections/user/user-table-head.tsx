@@ -5,29 +5,41 @@ import TableHead from '@mui/material/TableHead';
 import TableCell from '@mui/material/TableCell';
 import TableSortLabel from '@mui/material/TableSortLabel';
 
-import { visuallyHidden } from './utils';
+// ----------------------------------------------------------------------
+
+const visuallyHidden = {
+  border: 0,
+  margin: -1,
+  padding: 0,
+  width: '1px',
+  height: '1px',
+  overflow: 'hidden',
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  clip: 'rect(0 0 0 0)',
+} as const;
 
 // ----------------------------------------------------------------------
 
-type UserTableHeadProps = {
+type Props = {
+  order: 'asc' | 'desc';
   orderBy: string;
   rowCount: number;
+  headLabel: any[];
   numSelected: number;
-  order: 'asc' | 'desc';
   onSort: (id: string) => void;
-  headLabel: Record<string, any>[];
   onSelectAllRows: (checked: boolean) => void;
 };
 
-export function UserTableHead({
+export function CustomerTableHead({
   order,
-  onSort,
   orderBy,
   rowCount,
   headLabel,
   numSelected,
+  onSort,
   onSelectAllRows,
-}: UserTableHeadProps) {
+}: Props) {
   return (
     <TableHead>
       <TableRow>
@@ -35,9 +47,7 @@ export function UserTableHead({
           <Checkbox
             indeterminate={numSelected > 0 && numSelected < rowCount}
             checked={rowCount > 0 && numSelected === rowCount}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-              onSelectAllRows(event.target.checked)
-            }
+            onChange={(event) => onSelectAllRows(event.target.checked)}
           />
         </TableCell>
 

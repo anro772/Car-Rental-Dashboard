@@ -1,3 +1,4 @@
+//src/layouts/dashboard/main.tsx
 import type { BoxProps } from '@mui/material/Box';
 import type { Breakpoint } from '@mui/material/styles';
 import type { ContainerProps } from '@mui/material/Container';

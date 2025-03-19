@@ -1,3 +1,4 @@
+//src/layouts/components/nav-upgrade.tsx
 import type { StackProps } from '@mui/material/Stack';
 
 import Box from '@mui/material/Box';

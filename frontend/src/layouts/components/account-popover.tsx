@@ -1,6 +1,6 @@
 import type { IconButtonProps } from '@mui/material/IconButton';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -15,6 +15,7 @@ import MenuItem, { menuItemClasses } from '@mui/material/MenuItem';
 import { useRouter, usePathname } from 'src/routes/hooks';
 
 import { _myAccount } from 'src/_mock';
+import authService, { Admin } from 'src/services/authService';
 
 // ----------------------------------------------------------------------
 
@@ -29,10 +30,18 @@ export type AccountPopoverProps = IconButtonProps & {
 
 export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps) {
   const router = useRouter();
-
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState<Admin | null>(null);
 
   const [openPopover, setOpenPopover] = useState<HTMLButtonElement | null>(null);
+
+  // Get current user information when component mounts
+  useEffect(() => {
+    const admin = authService.getCurrentAdmin();
+    if (admin) {
+      setCurrentUser(admin);
+    }
+  }, []);
 
   const handleOpenPopover = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setOpenPopover(event.currentTarget);
@@ -50,6 +59,12 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
     [handleClosePopover, router]
   );
 
+  // Handle logout action
+  const handleLogout = useCallback(() => {
+    authService.logout();
+    router.push('/sign-in');
+  }, [router]);
+
   return (
     <>
       <IconButton
@@ -64,8 +79,12 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
         }}
         {...other}
       >
-        <Avatar src={_myAccount.photoURL} alt={_myAccount.displayName} sx={{ width: 1, height: 1 }}>
-          {_myAccount.displayName.charAt(0).toUpperCase()}
+        <Avatar
+          src={_myAccount.photoURL}
+          alt={currentUser?.name || _myAccount.displayName}
+          sx={{ width: 1, height: 1 }}
+        >
+          {(currentUser?.name || _myAccount.displayName).charAt(0).toUpperCase()}
         </Avatar>
       </IconButton>
 
@@ -83,11 +102,11 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
       >
         <Box sx={{ p: 2, pb: 1.5 }}>
           <Typography variant="subtitle2" noWrap>
-            {_myAccount?.displayName}
+            {currentUser?.name || _myAccount.displayName}
           </Typography>
 
           <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
-            {_myAccount?.email}
+            {currentUser?.email || _myAccount.email}
           </Typography>
         </Box>
 
@@ -129,7 +148,13 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
         <Divider sx={{ borderStyle: 'dashed' }} />
 
         <Box sx={{ p: 1 }}>
-          <Button fullWidth color="error" size="medium" variant="text">
+          <Button
+            fullWidth
+            color="error"
+            size="medium"
+            variant="text"
+            onClick={handleLogout}
+          >
             Logout
           </Button>
         </Box>

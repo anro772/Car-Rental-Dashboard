@@ -1,3 +1,4 @@
+//src/routes/sections.tsx
 import { lazy, Suspense } from 'react';
 import { Outlet, Navigate, useRoutes } from 'react-router-dom';
 
@@ -7,6 +8,7 @@ import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgr
 import { varAlpha } from 'src/theme/styles';
 import { AuthLayout } from 'src/layouts/auth';
 import { DashboardLayout } from 'src/layouts/dashboard';
+import { ProtectedRoute } from 'src/components/auth/protected-route';
 
 // ----------------------------------------------------------------------
 
@@ -14,8 +16,9 @@ export const HomePage = lazy(() => import('src/pages/home'));
 export const BlogPage = lazy(() => import('src/pages/blog'));
 export const UserPage = lazy(() => import('src/pages/user'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
-export const ProductsPage = lazy(() => import('src/pages/products'));
+export const ProductsPage = lazy(() => import('src/pages/cars'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
+export const RentalPage = lazy(() => import('src/pages/rental'));
 
 // ----------------------------------------------------------------------
 
@@ -36,17 +39,20 @@ export function Router() {
   return useRoutes([
     {
       element: (
-        <DashboardLayout>
-          <Suspense fallback={renderFallback}>
-            <Outlet />
-          </Suspense>
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Suspense fallback={renderFallback}>
+              <Outlet />
+            </Suspense>
+          </DashboardLayout>
+        </ProtectedRoute>
       ),
       children: [
         { element: <HomePage />, index: true },
         { path: 'user', element: <UserPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
+        { path: 'rental', element: <RentalPage /> },
       ],
     },
     {

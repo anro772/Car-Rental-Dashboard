@@ -215,7 +215,29 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                     : rentalData.total_cost
             };
 
-            await rentalsService.updateRental(rental.id, dataToSubmit);
+            // Store the original status and payment_status to check for changes
+            const originalStatus = rental.status;
+            const originalPaymentStatus = rental.payment_status;
+
+            // First update the main rental data (dates, cost, notes)
+            const baseUpdateData = {
+                start_date: dataToSubmit.start_date,
+                end_date: dataToSubmit.end_date,
+                total_cost: dataToSubmit.total_cost,
+                notes: dataToSubmit.notes
+            };
+
+            await rentalsService.updateRental(rental.id, baseUpdateData);
+
+            // If status has changed, update it separately
+            if (dataToSubmit.status && dataToSubmit.status !== originalStatus) {
+                await rentalsService.updateRentalStatus(rental.id, dataToSubmit.status);
+            }
+
+            // If payment status has changed, update it separately
+            if (dataToSubmit.payment_status && dataToSubmit.payment_status !== originalPaymentStatus) {
+                await rentalsService.updatePaymentStatus(rental.id, dataToSubmit.payment_status);
+            }
 
             // Close modal and trigger refresh
             onSuccess();

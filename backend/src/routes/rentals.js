@@ -20,9 +20,11 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET a single rental by ID
-router.get('/:id', async (req, res) => {
+// GET current active rentals (today falls between start and end date)
+router.get('/current/active', async (req, res) => {
     try {
+        const today = new Date().toISOString().split('T')[0];
+
         const [rows] = await req.app.locals.db.query(`
             SELECT r.*, 
                 c.brand, c.model, c.license_plate, c.image_url,
@@ -31,14 +33,67 @@ router.get('/:id', async (req, res) => {
             FROM rentals r
             JOIN cars c ON r.car_id = c.id
             JOIN customers cu ON r.customer_id = cu.id
-            WHERE r.id = ?
-        `, [req.params.id]);
+            WHERE r.status = 'active' 
+            AND ? BETWEEN r.start_date AND r.end_date
+            ORDER BY r.end_date
+        `, [today]);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
+// GET upcoming rentals (starting in the next 7 days)
+router.get('/upcoming/week', async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const nextWeekDate = nextWeek.toISOString().split('T')[0];
+
+        const [rows] = await req.app.locals.db.query(`
+            SELECT r.*, 
+                c.brand, c.model, c.license_plate, c.image_url,
+                CONCAT(cu.first_name, ' ', cu.last_name) as customer_name, 
+                cu.email as customer_email, cu.phone as customer_phone
+            FROM rentals r
+            JOIN cars c ON r.car_id = c.id
+            JOIN customers cu ON r.customer_id = cu.id
+            WHERE r.status IN ('pending', 'active') 
+            AND r.start_date BETWEEN ? AND ?
+            ORDER BY r.start_date
+        `, [today, nextWeekDate]);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET overdue rentals (end date has passed but still active)
+router.get('/overdue', async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        const [rows] = await req.app.locals.db.query(`
+            SELECT r.*, 
+                c.brand, c.model, c.license_plate, c.image_url,
+                CONCAT(cu.first_name, ' ', cu.last_name) as customer_name, 
+                cu.email as customer_email, cu.phone as customer_phone,
+                DATEDIFF(?, r.end_date) as days_overdue
+            FROM rentals r
+            JOIN cars c ON r.car_id = c.id
+            JOIN customers cu ON r.customer_id = cu.id
+            WHERE r.status = 'active' 
+            AND r.end_date < ?
+            ORDER BY r.end_date
+        `, [today, today]);
+
+        // Return empty array instead of 404 if no overdue rentals
         if (rows.length === 0) {
-            return res.status(404).json({ error: 'Rental not found' });
+            return res.json([]);
         }
 
-        res.json(rows[0]);
+        res.json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -125,11 +180,9 @@ router.get('/car/:carId', async (req, res) => {
     }
 });
 
-// GET current active rentals (today falls between start and end date)
-router.get('/current/active', async (req, res) => {
+// GET a single rental by ID
+router.get('/:id', async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
-
         const [rows] = await req.app.locals.db.query(`
             SELECT r.*, 
                 c.brand, c.model, c.license_plate, c.image_url,
@@ -138,11 +191,14 @@ router.get('/current/active', async (req, res) => {
             FROM rentals r
             JOIN cars c ON r.car_id = c.id
             JOIN customers cu ON r.customer_id = cu.id
-            WHERE r.status = 'active' 
-            AND ? BETWEEN r.start_date AND r.end_date
-            ORDER BY r.end_date
-        `, [today]);
-        res.json(rows);
+            WHERE r.id = ?
+        `, [req.params.id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Rental not found' });
+        }
+
+        res.json(rows[0]);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -445,56 +501,6 @@ router.delete('/:id', async (req, res) => {
         );
 
         res.json({ message: 'Rental deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET upcoming rentals (starting in the next 7 days)
-router.get('/upcoming/week', async (req, res) => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        const nextWeekDate = nextWeek.toISOString().split('T')[0];
-
-        const [rows] = await req.app.locals.db.query(`
-            SELECT r.*, 
-                c.brand, c.model, c.license_plate, c.image_url,
-                CONCAT(cu.first_name, ' ', cu.last_name) as customer_name, 
-                cu.email as customer_email, cu.phone as customer_phone
-            FROM rentals r
-            JOIN cars c ON r.car_id = c.id
-            JOIN customers cu ON r.customer_id = cu.id
-            WHERE r.status IN ('pending', 'active') 
-            AND r.start_date BETWEEN ? AND ?
-            ORDER BY r.start_date
-        `, [today, nextWeekDate]);
-        res.json(rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET overdue rentals (end date has passed but still active)
-router.get('/overdue', async (req, res) => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-
-        const [rows] = await req.app.locals.db.query(`
-            SELECT r.*, 
-                c.brand, c.model, c.license_plate, c.image_url,
-                CONCAT(cu.first_name, ' ', cu.last_name) as customer_name, 
-                cu.email as customer_email, cu.phone as customer_phone,
-                DATEDIFF(?, r.end_date) as days_overdue
-            FROM rentals r
-            JOIN cars c ON r.car_id = c.id
-            JOIN customers cu ON r.customer_id = cu.id
-            WHERE r.status = 'active' 
-            AND r.end_date < ?
-            ORDER BY r.end_date
-        `, [today, today]);
-        res.json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

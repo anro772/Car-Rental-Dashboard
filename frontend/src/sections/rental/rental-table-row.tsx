@@ -97,6 +97,14 @@ export function RentalTableRow({
         setOpenMenu(event.currentTarget);
     };
 
+    const handleViewCar = () => {
+        // Navigate to the car details page
+        if (car_id) {
+            router.push(`/cars/${car_id}`);
+        }
+        handleCloseMenu();
+    };
+
     const handleCloseMenu = () => {
         setOpenMenu(null);
     };
@@ -303,6 +311,11 @@ export function RentalTableRow({
                         Customer
                     </MenuItem>
                 )}
+
+                <MenuItem onClick={handleViewCar}>
+                    <Iconify icon="eva:car-fill" sx={{ mr: 2 }} />
+                    Car
+                </MenuItem>
 
                 <MenuItem onClick={onDeleteRow} sx={{ color: 'error.main' }} disabled={status === 'active'}>
                     <Iconify icon="eva:trash-2-outline" sx={{ mr: 2 }} />

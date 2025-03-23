@@ -61,12 +61,6 @@ export function NavDesktop({
   );
 }
 
-// ----------------------------------------------------------------------
-
-// NavMobile component removed as requested
-
-// ----------------------------------------------------------------------
-
 export function NavContent({ data, slots, sx }: NavContentProps) {
   const pathname = usePathname();
 

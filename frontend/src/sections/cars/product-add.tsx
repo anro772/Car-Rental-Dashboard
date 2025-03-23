@@ -1,4 +1,4 @@
-// product-add.tsx
+//src/sections/cars/product-add.tsx
 import { useState, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -24,14 +24,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Default image paths - you can expand this as needed
 const CAR_IMAGES = {
-    'Sedan': 'src/assets/cars/default-sedan.jpeg',
-    'SUV': 'src/assets/cars/default-suv.jpeg',
-    'Sports': 'src/assets/cars/default-sports.jpeg',
-    'Luxury': 'src/assets/cars/default-luxury.jpeg',
     'default': 'src/assets/cars/default-car.jpeg'
 };
 
-const CATEGORIES = ['Sedan', 'SUV', 'Sports', 'Luxury'];
+const CATEGORIES = ['Sedan', 'SUV', 'Sports', 'Luxury', 'Hatchback', 'Wagon'];
 const COLORS = ['Red', 'Black', 'White', 'Silver', 'Blue', 'Gray', 'Yellow', 'Green'];
 const STATUSES = ['available', 'rented', 'maintenance'] as const;
 
@@ -85,8 +81,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
 
             // If category changes, suggest a default image
             if (name === 'category' && !formData.image_url) {
-                const category = value as string;
-                const defaultImage = CAR_IMAGES[category as keyof typeof CAR_IMAGES] || CAR_IMAGES.default;
+                const defaultImage = CAR_IMAGES.default;
                 setFormData(prev => ({
                     ...prev,
                     image_url: defaultImage

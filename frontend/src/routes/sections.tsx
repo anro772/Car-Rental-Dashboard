@@ -1,4 +1,3 @@
-//src/routes/sections.tsx
 import { lazy, Suspense } from 'react';
 import { Outlet, Navigate, useRoutes } from 'react-router-dom';
 
@@ -9,6 +8,7 @@ import { varAlpha } from 'src/theme/styles';
 import { AuthLayout } from 'src/layouts/auth';
 import { DashboardLayout } from 'src/layouts/dashboard';
 import { ProtectedRoute } from 'src/components/auth/protected-route';
+import { CarDetailsView } from 'src/sections/cars/product-details-view'; // Import the new component
 
 // ----------------------------------------------------------------------
 
@@ -50,7 +50,8 @@ export function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: 'user', element: <UserPage /> },
-        { path: 'products', element: <ProductsPage /> },
+        { path: 'cars', element: <ProductsPage /> },
+        { path: 'cars/:id', element: <CarDetailsView /> }, // Add car details route
         { path: 'blog', element: <BlogPage /> },
         { path: 'rental', element: <RentalPage /> },
       ],

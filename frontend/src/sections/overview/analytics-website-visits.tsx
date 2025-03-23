@@ -21,15 +21,41 @@ type Props = CardProps & {
     }[];
     options?: ChartOptions;
   };
+  type?: 'currency' | 'visits' | 'number'; // Add type prop
 };
 
-export function AnalyticsWebsiteVisits({ title, subheader, chart, ...other }: Props) {
+export function AnalyticsWebsiteVisits({ title, subheader, chart, type = 'visits', ...other }: Props) {
   const theme = useTheme();
 
   const chartColors = chart.colors ?? [
     theme.palette.primary.dark,
     hexAlpha(theme.palette.primary.light, 0.64),
   ];
+
+  // Create tooltip formatter based on type
+  const getTooltipFormatter = (type: string) => {
+    switch (type) {
+      case 'currency':
+        return (value: number) => `$${value.toFixed(2)}`;
+      case 'visits':
+        return (value: number) => `${value} visits`;
+      case 'number':
+      default:
+        return (value: number) => `${value}`;
+    }
+  };
+
+  // Create y-axis formatter based on type
+  const getYAxisFormatter = (type: string) => {
+    switch (type) {
+      case 'currency':
+        return (value: number) => `$${value.toLocaleString()}`;
+      case 'visits':
+      case 'number':
+      default:
+        return (value: number) => value.toString();
+    }
+  };
 
   const chartOptions = useChart({
     colors: chartColors,
@@ -40,12 +66,17 @@ export function AnalyticsWebsiteVisits({ title, subheader, chart, ...other }: Pr
     xaxis: {
       categories: chart.categories,
     },
+    yaxis: {
+      labels: {
+        formatter: getYAxisFormatter(type),
+      },
+    },
     legend: {
       show: true,
     },
     tooltip: {
       y: {
-        formatter: (value: number) => `${value} visits`,
+        formatter: getTooltipFormatter(type),
       },
     },
     ...chart.options,

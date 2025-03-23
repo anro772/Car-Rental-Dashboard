@@ -55,9 +55,10 @@ export function RentalView() {
 
     // Get customerId from URL query parameters
     useEffect(() => {
-        // Get customerId from URL query parameters
+        // Get customerId and tab from URL query parameters
         const searchParams = new URLSearchParams(location.search);
         const customerParam = searchParams.get('customer');
+        const tabParam = searchParams.get('tab');
 
         if (customerParam) {
             const id = Number(customerParam);
@@ -78,6 +79,11 @@ export function RentalView() {
         } else {
             setCustomerId(null);
             setCustomer(null);
+
+            // Set active tab from URL parameter if provided
+            if (tabParam && ['all', 'active', 'pending', 'completed', 'cancelled', 'overdue', 'upcoming'].includes(tabParam)) {
+                setActiveTab(tabParam);
+            }
         }
     }, [location.search]);
 

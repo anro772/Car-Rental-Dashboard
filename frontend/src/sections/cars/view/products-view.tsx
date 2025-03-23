@@ -1,3 +1,4 @@
+//src/sections/cars/view/products-view.tsx
 import { useState, useCallback, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
@@ -31,6 +32,8 @@ const CATEGORY_OPTIONS = [
   { value: 'SUV', label: 'SUV' },
   { value: 'Sports', label: 'Sports' },
   { value: 'Luxury', label: 'Luxury' },
+  { value: 'Hatchback', label: 'Hatchback' },
+  { value: 'Wagon', label: 'Wagon' },
 ];
 
 // Adapt price options to daily rates

@@ -27,6 +27,7 @@ type Props = CardProps & {
     categories: string[];
     options?: ChartOptions;
   };
+  hiddenPercent?: boolean; // Add new prop for hiding percent
 };
 
 export function AnalyticsWidgetSummary({
@@ -36,6 +37,7 @@ export function AnalyticsWidgetSummary({
   chart,
   percent,
   color = 'primary',
+  hiddenPercent = false, // Default to showing percent
   sx,
   ...other
 }: Props) {
@@ -61,7 +63,7 @@ export function AnalyticsWidgetSummary({
     ...chart.options,
   });
 
-  const renderTrending = (
+  const renderTrending = hiddenPercent ? null : (
     <Box
       sx={{
         top: 16,

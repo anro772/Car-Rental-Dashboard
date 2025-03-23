@@ -1,3 +1,4 @@
+//src/theme/core/palette.ts
 import type { ColorSystemOptions } from '@mui/material/styles';
 
 import COLORS from './colors.json';

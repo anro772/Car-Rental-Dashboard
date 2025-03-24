@@ -26,6 +26,7 @@ export type PostItemProps = {
   totalComments: number;
   totalFavorites: number;
   postedAt: string | number | null;
+  categories?: string[]; // Add this property to your existing PostItemProps
   author: {
     name: string;
     avatarUrl: string;

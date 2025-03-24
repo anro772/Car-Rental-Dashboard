@@ -162,8 +162,8 @@ export function OverviewAnalyticsView() {
           let monthRevenue = 0;
           allRentals
             .filter(r => {
-              // Check if rental is completed or active
-              const isValidStatus = r.status === 'completed' || r.status === 'active';
+              // MODIFIED: Only count completed rentals, not active ones
+              const isValidStatus = r.status === 'completed';
 
               // Check if rental started in the target month
               const rentalDate = new Date(r.start_date);
@@ -368,7 +368,7 @@ export function OverviewAnalyticsView() {
         <Grid xs={12} md={6} lg={8}>
           <AnalyticsWebsiteVisits
             title="Monthly Revenue"
-            subheader="Last 6 months"
+            subheader="Last 6 months (completed rentals only)"
             chart={dashboardData.revenueData}
             type="currency"
           />

@@ -1,21 +1,16 @@
-//src/layouts/dashboard/nav.tsx
 import type { Theme, SxProps, Breakpoint } from '@mui/material/styles';
-
 import Box from '@mui/material/Box';
 import ListItem from '@mui/material/ListItem';
 import { useTheme } from '@mui/material/styles';
 import ListItemButton from '@mui/material/ListItemButton';
-
 import { usePathname } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
-
 import { varAlpha } from 'src/theme/styles';
-
 import { Logo } from 'src/components/logo';
 import { Scrollbar } from 'src/components/scrollbar';
+import { NavThemeToggle } from './nav-theme-toggle';
 
 // ----------------------------------------------------------------------
-
 export type NavContentProps = {
   data: {
     path: string;
@@ -37,7 +32,6 @@ export function NavDesktop({
   layoutQuery,
 }: NavContentProps & { layoutQuery: Breakpoint }) {
   const theme = useTheme();
-
   return (
     <Box
       sx={{
@@ -56,26 +50,33 @@ export function NavDesktop({
         ...sx,
       }}
     >
-      <NavContent data={data} slots={slots} />
+      <NavContent
+        data={data}
+        slots={{
+          ...slots,
+          bottomArea: (
+            <>
+              <NavThemeToggle />
+              {slots?.bottomArea}
+            </>
+          ),
+        }}
+      />
     </Box>
   );
 }
 
 export function NavContent({ data, slots, sx }: NavContentProps) {
   const pathname = usePathname();
-
   return (
     <>
       <Logo />
-
       {slots?.topArea}
-
       <Scrollbar fillContent>
         <Box component="nav" display="flex" flex="1 1 auto" flexDirection="column" sx={sx}>
           <Box component="ul" gap={0.5} display="flex" flexDirection="column">
             {data.map((item) => {
               const isActived = item.path === pathname;
-
               return (
                 <ListItem disableGutters disablePadding key={item.title}>
                   <ListItemButton
@@ -108,11 +109,9 @@ export function NavContent({ data, slots, sx }: NavContentProps) {
                     }}>
                       {item.icon}
                     </Box>
-
                     <Box component="span" flexGrow={1}>
                       {item.title}
                     </Box>
-
                     {item.info && item.info}
                   </ListItemButton>
                 </ListItem>
@@ -121,10 +120,7 @@ export function NavContent({ data, slots, sx }: NavContentProps) {
           </Box>
         </Box>
       </Scrollbar>
-
       {slots?.bottomArea}
-
-      {/* NavUpgrade component removed */}
     </>
   );
 }

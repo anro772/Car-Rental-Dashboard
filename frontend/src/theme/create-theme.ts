@@ -16,6 +16,18 @@ export function createTheme(): Theme {
     typography,
     cssVarPrefix: '',
     shouldSkipGeneratingVar,
+    // Add better transition durations without overriding the create function
+    transitions: {
+      duration: {
+        shortest: 150,
+        shorter: 200,
+        short: 250,
+        standard: 300,
+        complex: 375,
+        enteringScreen: 225,
+        leavingScreen: 195,
+      },
+    },
   };
 
   const theme = extendTheme(initialTheme);

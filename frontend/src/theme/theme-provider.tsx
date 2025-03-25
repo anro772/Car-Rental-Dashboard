@@ -1,10 +1,29 @@
-import type {} from '@mui/lab/themeAugmentation';
-import type {} from '@mui/material/themeCssVarsAugmentation';
+import type { } from '@mui/lab/themeAugmentation';
+import type { } from '@mui/material/themeCssVarsAugmentation';
 
+import { useMemo } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
+import { Experimental_CssVarsProvider as CssVarsProvider, useColorScheme } from '@mui/material/styles';
 
 import { createTheme } from './create-theme';
+
+// ----------------------------------------------------------------------
+
+// Hook to use the color mode
+export function useColorMode() {
+  const { mode, setMode } = useColorScheme();
+
+  const toggleColorMode = () => {
+    setMode(mode === 'light' ? 'dark' : 'light');
+  };
+
+  return {
+    mode,
+    toggleColorMode,
+    isDarkMode: mode === 'dark',
+    isLightMode: mode === 'light',
+  };
+}
 
 // ----------------------------------------------------------------------
 
@@ -13,10 +32,10 @@ type Props = {
 };
 
 export function ThemeProvider({ children }: Props) {
-  const theme = createTheme();
+  const theme = useMemo(() => createTheme(), []);
 
   return (
-    <CssVarsProvider theme={theme}>
+    <CssVarsProvider theme={theme} defaultMode="light" modeStorageKey="app-theme-mode">
       <CssBaseline />
       {children}
     </CssVarsProvider>

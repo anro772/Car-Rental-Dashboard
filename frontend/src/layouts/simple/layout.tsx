@@ -1,3 +1,4 @@
+//src/layours/simple/layout.tsx
 import type { Theme, SxProps, Breakpoint } from '@mui/material/styles';
 
 import Link from '@mui/material/Link';

@@ -11,11 +11,11 @@ export default function Page() {
     <>
       <Helmet>
         <title> {`Dashboard - ${CONFIG.appName}`}</title>
-        <meta
+        {/* <meta
           name="description"
           content="Car Rental Dashboard"
         />
-        <meta name="keywords" content="react,material,kit,application,dashboard,admin,template" />
+        <meta name="keywords" content="react,material,kit,application,dashboard,admin,template" /> */}
       </Helmet>
 
       <OverviewAnalyticsView />

@@ -1,3 +1,3 @@
-add edit for rentals DONE
+pana miercuri de facut guide mic si trimis app
 
-make dashboard (dau datele din db, se poate lega de charts si celelalte)
+stergere content fisiere cu obfuscare fisier

@@ -1,7 +1,8 @@
 // src/services/rentalsService.ts
 import axios from 'axios';
-import { Car } from './carsService';
-import { Customer } from './customersService';
+// Remove unused imports if Car and Customer aren't directly used here
+// import { Car } from './carsService';
+// import { Customer } from './customersService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -10,8 +11,8 @@ export interface Rental {
     id: number;
     car_id: number;
     customer_id: number;
-    start_date: string;
-    end_date: string;
+    start_date: string; // Keep as string (YYYY-MM-DD)
+    end_date: string;   // Keep as string (YYYY-MM-DD)
     status: 'pending' | 'active' | 'completed' | 'cancelled';
     total_cost: number;
     payment_status: 'unpaid' | 'partial' | 'paid';
@@ -20,11 +21,13 @@ export interface Rental {
 }
 
 // Extended rental interface with related car and customer data
+// Make sure your backend API endpoints actually return these fields
 export interface RentalExtended extends Rental {
     brand?: string;
     model?: string;
     license_plate?: string;
-    image_url?: string;
+    image_url?: string;     // Car image URL
+    color?: string;
     customer_name?: string;
     customer_email?: string;
     customer_phone?: string;
@@ -32,12 +35,16 @@ export interface RentalExtended extends Rental {
 }
 
 // Type for creating a new rental
-export type NewRental = Omit<Rental, 'id' | 'created_at' | 'status' | 'payment_status'> & {
-    status?: 'pending' | 'active' | 'completed' | 'cancelled';
-    payment_status?: 'unpaid' | 'partial' | 'paid';
-};
+// Ensure default status/payment_status are handled correctly if needed
+export type NewRental = Omit<Rental, 'id' | 'created_at'>;
+// If status/payment are optional on creation, use Partial or adjust backend
+// export type NewRental = Omit<Rental, 'id' | 'created_at' | 'status' | 'payment_status'> & {
+//     status?: 'pending' | 'active' | 'completed' | 'cancelled';
+//     payment_status?: 'unpaid' | 'partial' | 'paid';
+// };
 
-// Type for updating a rental
+
+// Type for updating a rental (usually only specific fields are updatable)
 export type UpdateRental = Partial<Omit<Rental, 'id' | 'created_at' | 'car_id' | 'customer_id'>>;
 
 const rentalsService = {
@@ -45,7 +52,7 @@ const rentalsService = {
     getAllRentals: async (): Promise<RentalExtended[]> => {
         try {
             const response = await axios.get(`${API_URL}/rentals`);
-            console.log('Rentals data:', response.data);
+            // console.log('Rentals data:', response.data); // Optional logging
             return response.data;
         } catch (error) {
             console.error('Error fetching rentals:', error);
@@ -125,10 +132,9 @@ const rentalsService = {
             const response = await axios.get(`${API_URL}/rentals/overdue`);
             return response.data;
         } catch (error: any) {
-            // Special handling for 404 - means no overdue rentals
             if (error.response && error.response.status === 404) {
-                console.log('No overdue rentals found (404 is expected here)');
-                return []; // Return empty array instead of throwing
+                console.log('No overdue rentals found.');
+                return [];
             }
             console.error('Error fetching overdue rentals:', error);
             throw error;
@@ -138,17 +144,24 @@ const rentalsService = {
     // Create a new rental
     createRental: async (rentalData: NewRental): Promise<RentalExtended> => {
         try {
-            const response = await axios.post(`${API_URL}/rentals`, rentalData);
-            return response.data;
+            // Ensure total_cost is a number before sending
+            const dataToSend = {
+                ...rentalData,
+                total_cost: Number(rentalData.total_cost) || 0,
+            };
+            const response = await axios.post(`${API_URL}/rentals`, dataToSend);
+            return response.data; // Assuming backend returns the created rental (potentially extended)
         } catch (error) {
             console.error('Error creating rental:', error);
-            throw error;
+            throw error; // Re-throw to be handled by the caller
         }
     },
 
     // Update rental status
     updateRentalStatus: async (id: number, status: Rental['status']): Promise<RentalExtended> => {
         try {
+            // Backend might return the updated rental or just a success message.
+            // Assuming it returns the updated rental (potentially extended)
             const response = await axios.put(`${API_URL}/rentals/${id}/status`, { status });
             return response.data;
         } catch (error) {
@@ -168,10 +181,15 @@ const rentalsService = {
         }
     },
 
-    // Update rental details
+    // Update rental details (e.g., dates, notes, total_cost)
     updateRental: async (id: number, rentalData: UpdateRental): Promise<RentalExtended> => {
         try {
-            const response = await axios.put(`${API_URL}/rentals/${id}`, rentalData);
+            // Ensure total_cost is a number if present
+            const dataToSend = { ...rentalData };
+            if (dataToSend.total_cost !== undefined) {
+                dataToSend.total_cost = Number(dataToSend.total_cost) || 0;
+            }
+            const response = await axios.put(`${API_URL}/rentals/${id}`, dataToSend);
             return response.data;
         } catch (error) {
             console.error(`Error updating rental with ID ${id}:`, error);
@@ -180,26 +198,38 @@ const rentalsService = {
     },
 
     // Delete a rental
-    deleteRental: async (id: number): Promise<void> => {
+    deleteRental: async (id: number): Promise<{ message: string }> => { // Return type can vary based on backend
         try {
-            await axios.delete(`${API_URL}/rentals/${id}`);
+            const response = await axios.delete(`${API_URL}/rentals/${id}`);
+            return response.data || { message: 'Rental deleted successfully' }; // Return backend message or default
         } catch (error) {
             console.error(`Error deleting rental with ID ${id}:`, error);
             throw error;
         }
     },
 
-    // Calculate rental duration in days
+    // --- Client-side Helper Functions (Optional) ---
+
+    // Calculate rental duration in days (inclusive)
     calculateDuration: (startDate: string, endDate: string): number => {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        try {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
+            // Difference in time
+            const diffTime = end.getTime() - start.getTime();
+            // Difference in days + 1 for inclusive count
+            const duration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            return duration > 0 ? duration : 0;
+        } catch {
+            return 0; // Handle potential date parsing errors
+        }
     },
 
     // Calculate rental cost based on car daily rate and duration
     calculateRentalCost: (dailyRate: number, startDate: string, endDate: string): number => {
         const duration = rentalsService.calculateDuration(startDate, endDate);
+        if (duration <= 0 || !dailyRate || dailyRate <= 0) return 0;
         return parseFloat((dailyRate * duration).toFixed(2));
     }
 };

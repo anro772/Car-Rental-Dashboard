@@ -1,13 +1,14 @@
+// src/sections/cars/product-item.tsx
 import { useState } from 'react';
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
+// import Link from '@mui/material/Link'; // Not used directly now
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Popover from '@mui/material/Popover';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import { useRouter } from 'src/routes/hooks';
+// import { useRouter } from 'src/routes/hooks'; // Not used directly for group view
 
 import { fCurrency } from 'src/utils/format-number';
 
@@ -15,26 +16,46 @@ import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { ColorPreview } from 'src/components/color-utils';
 
-// ----------------------------------------------------------------------
-
-export type ProductItemProps = {
-  id: string;
-  name: string;
-  price: number;
-  status: string;
+// Interface for the grouped data passed within product prop
+interface GroupedCarProductData {
+  groupKey: string;
+  brand: string;
+  model: string;
+  year: number;
   coverUrl: string;
+  minPrice: number;
+  maxPrice: number;
   colors: string[];
-  priceSale: number | null;
+  totalCount: number;
+  availableCount: number;
+  rentedCount: number;
+  maintenanceCount: number;
+  representativeCarId: number;
+  individualCars: any[]; // Use 'any' or import 'Car' type if needed here
+}
+
+// Update ProductItemProps to potentially include groupData
+export type ProductItemProps = {
+  id: string; // Can be car ID or groupKey
+  name: string;
+  price: number; // Represents minPrice for groups
+  status: string; // Represents availability summary for groups
+  coverUrl: string;
+  colors: string[]; // Represents unique colors for groups
+  priceSale: number | null; // Represents maxPrice for groups
   year?: number;
+  groupData?: GroupedCarProductData; // Optional group data
 };
 
+// Add mode prop to differentiate rendering
 type ProductItemComponentProps = {
   product: ProductItemProps;
   onClick?: () => void;
+  mode?: 'group' | 'individual'; // Specify the mode
 };
 
-export function ProductItem({ product, onClick }: ProductItemComponentProps) {
-  const router = useRouter();
+export function ProductItem({ product, onClick, mode = 'individual' }: ProductItemComponentProps) {
+  // const router = useRouter(); // Keep if needed for individual view later
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -46,71 +67,103 @@ export function ProductItem({ product, onClick }: ProductItemComponentProps) {
     setAnchorEl(null);
   };
 
-  const handleViewCar = (event: React.MouseEvent<HTMLElement>) => {
-    event.stopPropagation(); // Prevent card click event
-    router.push(`/cars/${product.id}`);
-    handleCloseMenu();
-  };
-
-  const handleEditCar = (event: React.MouseEvent<HTMLElement>) => {
-    event.stopPropagation(); // Prevent card click event
+  // --- Actions depend on mode ---
+  const handlePrimaryAction = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
     if (onClick) {
-      onClick();
+      onClick(); // Trigger the action passed from parent (view group / edit car)
     }
     handleCloseMenu();
   };
 
-  const renderStatus = (
-    <Label
-      variant="inverted"
-      color={(product.status === 'sale' && 'error') || 'info'}
-      sx={{
-        zIndex: 9,
-        top: 16,
-        right: 16,
-        position: 'absolute',
-        textTransform: 'uppercase',
-      }}
-    >
-      {product.status}
-    </Label>
-  );
+  // --- Render Status Label ---
+  // For groups, show total count or availability. For individuals, show status.
+  const renderStatus = () => {
+    let labelText = product.status;
+    let labelColor: "info" | "success" | "warning" | "error" = 'info';
 
+    if (mode === 'group' && product.groupData) {
+      labelText = `${product.groupData.totalCount} Total`;
+      if (product.groupData.availableCount > 0) {
+        labelColor = 'success';
+      } else if (product.groupData.totalCount > 0) {
+        labelColor = 'warning'; // Or 'error' if all are rented/maintenance
+      }
+    } else if (mode === 'individual') {
+      // Existing logic for individual car status color
+      if (product.status === 'available') labelColor = 'success';
+      else if (product.status === 'rented') labelColor = 'error';
+      else if (product.status === 'maintenance') labelColor = 'warning';
+    }
+
+
+    return (
+      <Label
+        variant="filled" // Use filled for better visibility
+        color={labelColor}
+        sx={{
+          zIndex: 9,
+          top: 16,
+          right: 16,
+          position: 'absolute',
+          textTransform: 'uppercase',
+        }}
+      >
+        {labelText}
+      </Label>
+    );
+  };
+
+  // --- Render Image (No change needed) ---
   const renderImg = (
     <Box
       component="img"
       alt={product.name}
       src={product.coverUrl}
-      sx={{
-        top: 0,
-        width: 1,
-        height: 1,
-        objectFit: 'cover',
-        position: 'absolute',
-      }}
+      sx={{ top: 0, width: 1, height: 1, objectFit: 'cover', position: 'absolute' }}
     />
   );
 
-  const renderPrice = (
-    <Typography variant="subtitle1">
-      <Typography
-        component="span"
-        variant="body1"
-        sx={{
-          color: 'text.disabled',
-          textDecoration: 'line-through',
-        }}
-      >
-        {product.priceSale && fCurrency(product.priceSale)}
+  // --- Render Price ---
+  // For groups, show range. For individuals, show single price.
+  const renderPrice = () => {
+    if (mode === 'group' && product.groupData && product.groupData.minPrice !== product.groupData.maxPrice) {
+      return (
+        <Typography variant="subtitle1">
+          {fCurrency(product.groupData.minPrice)} - {fCurrency(product.groupData.maxPrice)}
+        </Typography>
+      );
+    }
+    // Show single price for individual cars or groups with only one price point
+    return (
+      <Typography variant="subtitle1">
+        {fCurrency(product.price)}
       </Typography>
-      &nbsp;
-      {fCurrency(product.price)}
-    </Typography>
-  );
+    );
+  };
+
+  // --- Render Availability Counts (for Group mode) ---
+  const renderGroupCounts = () => {
+    if (mode !== 'group' || !product.groupData) return null;
+
+    return (
+      <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mt: 1, mb: 1 }}>
+        <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 'bold' }}>
+          {product.groupData.availableCount} Avail.
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'error.main' }}>
+          {product.groupData.rentedCount} Rented
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'warning.main' }}>
+          {product.groupData.maintenanceCount} Maint.
+        </Typography>
+      </Stack>
+    );
+  }
 
   return (
     <Card
-      onClick={onClick}
+      onClick={onClick} // Main card click action
       sx={{
         cursor: onClick ? 'pointer' : 'default',
         transition: 'transform 0.3s, box-shadow 0.3s',
@@ -118,66 +171,84 @@ export function ProductItem({ product, onClick }: ProductItemComponentProps) {
           transform: 'translateY(-4px)',
           boxShadow: (theme) => theme.shadows[10],
         } : {},
-        position: 'relative', // For positioning the menu button
+        position: 'relative', // For positioning menu button and label
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%', // Ensure cards have same height
       }}
     >
-      <Box sx={{ pt: '100%', position: 'relative' }}>
-        {product.status && renderStatus}
+      {/* Image Box */}
+      <Box sx={{ pt: '75%', position: 'relative' }}> {/* Adjusted pt for aspect ratio */}
+        {renderStatus()}
         {renderImg}
       </Box>
 
-      <Stack spacing={2} sx={{ p: 3 }}>
+      {/* Content Box */}
+      <Stack spacing={1} sx={{ p: 2, flexGrow: 1, justifyContent: 'space-between' }}> {/* Adjusted padding and spacing */}
+        {/* Top section: Name, Year, Menu */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
+          <Box sx={{ flexGrow: 1, mr: 1 }}> {/* Allow name to take space */}
             <Typography variant="subtitle2" noWrap>
               {product.name}
             </Typography>
             {product.year && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" noWrap>
                 Year: {product.year}
               </Typography>
             )}
           </Box>
 
+          {/* Menu Button */}
           <IconButton
             size="small"
             onClick={handleOpenMenu}
-            sx={{
-              ml: 1,
-              mt: -0.5,
-              '&:hover': { backgroundColor: 'action.hover' }
-            }}
+            sx={{ flexShrink: 0, mt: -0.5, '&:hover': { backgroundColor: 'action.hover' } }}
           >
             <Iconify icon="eva:more-vertical-fill" width={20} height={20} />
           </IconButton>
 
+          {/* Popover Menu */}
           <Popover
-            open={Boolean(anchorEl)}
-            anchorEl={anchorEl}
-            onClose={handleCloseMenu}
+            open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handleCloseMenu}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            slotProps={{
-              paper: {
-                sx: { width: 140, p: 0.5 },
-              },
-            }}
+            slotProps={{ paper: { sx: { width: 140, p: 0.5 } } }}
           >
-            <MenuItem onClick={handleViewCar} dense>
-              <Iconify icon="eva:car-fill" sx={{ mr: 1 }} />
-              View Car
-            </MenuItem>
-
-            <MenuItem onClick={handleEditCar} dense>
-              <Iconify icon="eva:edit-fill" sx={{ mr: 1 }} />
-              Edit Car
-            </MenuItem>
+            {/* Actions depend on mode */}
+            {mode === 'group' && (
+              <MenuItem onClick={handlePrimaryAction} dense>
+                <Iconify icon="eva:list-fill" sx={{ mr: 1 }} />
+                View Stock
+              </MenuItem>
+            )}
+            {mode === 'individual' && (
+              <>
+                <MenuItem onClick={handlePrimaryAction} dense> {/* Assumes onClick handles edit for individual */}
+                  <Iconify icon="eva:edit-fill" sx={{ mr: 1 }} />
+                  Edit Car
+                </MenuItem>
+                {/* Add View Details for individual if needed */}
+                {/* <MenuItem onClick={handleViewDetails} dense>
+                    <Iconify icon="eva:eye-fill" sx={{ mr: 1 }} />
+                    View Details
+                 </MenuItem> */}
+              </>
+            )}
+            {/* Add Delete action if applicable */}
+            {/* <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }} dense>
+              <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
+              Delete
+            </MenuItem> */}
           </Popover>
         </Box>
 
+        {/* Group Counts (only in group mode) */}
+        {renderGroupCounts()}
+
+        {/* Bottom section: Colors, Price */}
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <ColorPreview colors={product.colors} />
-          {renderPrice}
+          <ColorPreview colors={product.colors} limit={4} /> {/* Show multiple colors */}
+          {renderPrice()}
         </Box>
       </Stack>
     </Card>

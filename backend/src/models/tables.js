@@ -63,7 +63,9 @@ async function createTables(pool) {
             await pool.query(`
                 INSERT INTO cars (brand, model, year, license_plate, color, category, daily_rate, status, image_url, features) VALUES
                 ('Toyota', 'Camry', 2022, 'ABC123', 'Silver', 'Sedan', 49.99, 'available', 'src/assets/cars/toyota-camry.jpeg', 'Bluetooth, Backup Camera, Cruise Control'),
+                ('Toyota', 'Camry', 2022, 'DEF456', 'Red', 'Sedan', 51.99, 'available', 'src/assets/cars/toyota-camry.jpeg', 'Bluetooth, Backup Camera, Sunroof'), -- Added second Camry
                 ('Honda', 'CR-V', 2021, 'XYZ789', 'Blue', 'SUV', 59.99, 'available', 'src/assets/cars/honda-crv.jpeg', 'Leather seats, Panoramic sunroof, Navigation system'),
+                ('Honda', 'CR-V', 2021, 'UVW123', 'Black', 'SUV', 59.99, 'maintenance', 'src/assets/cars/honda-crv.jpeg', 'Leather seats, Navigation system'), -- Added second CR-V
                 ('Ford', 'Mustang', 2023, 'MUS001', 'Red', 'Sports', 89.99, 'available', 'src/assets/cars/ford-mustang.jpeg', 'Premium sound system, Performance package, Convertible top'),
                 ('Chevrolet', 'Equinox', 2022, 'EQX234', 'Black', 'SUV', 54.99, 'available', 'src/assets/cars/chevrolet-equinox.jpeg', 'Android Auto, Apple CarPlay, Heated seats'),
                 ('BMW', 'X5', 2023, 'BMW101', 'White', 'Luxury', 99.99, 'available', 'src/assets/cars/bmw-x5.jpeg', 'Leather interior, 360 camera, Heads-up display'),

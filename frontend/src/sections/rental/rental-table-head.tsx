@@ -1,9 +1,12 @@
+// src/sections/rental/rental-table-head.tsx
 import Box from '@mui/material/Box';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
 import TableHead from '@mui/material/TableHead';
 import TableCell from '@mui/material/TableCell';
 import TableSortLabel from '@mui/material/TableSortLabel';
+import Tooltip from '@mui/material/Tooltip';
+import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
@@ -64,7 +67,18 @@ export function RentalTableHead({
                             direction={orderBy === headCell.id ? order : 'asc'}
                             onClick={() => onSort(headCell.id)}
                         >
-                            {headCell.label}
+                            {/* Add car color icon to the Car column */}
+                            {headCell.id === 'car' ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    {headCell.label}
+                                    <Box component="span" sx={{ ml: 0.5, display: 'flex', alignItems: 'center' }}>
+                                        <Iconify icon="mdi:car-sports" width={16} height={16} />
+                                    </Box>
+                                </Box>
+                            ) : (
+                                headCell.label
+                            )}
+
                             {orderBy === headCell.id ? (
                                 <Box sx={{ ...visuallyHidden }}>
                                     {order === 'desc' ? 'sorted descending' : 'sorted ascending'}

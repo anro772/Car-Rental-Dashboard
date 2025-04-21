@@ -1,3 +1,4 @@
+// src/sections/rental/rental-edit-modal.tsx
 import { useState, useEffect } from 'react';
 
 import Dialog from '@mui/material/Dialog';
@@ -17,6 +18,7 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import FormHelperText from '@mui/material/FormHelperText';
+import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -24,6 +26,27 @@ import rentalsService, { RentalExtended, UpdateRental } from 'src/services/renta
 import carsService, { Car } from 'src/services/carsService';
 
 // ----------------------------------------------------------------------
+
+// Helper function to get color hex
+const getColorHex = (colorName: string | undefined): string => {
+    const colorMap: Record<string, string> = {
+        'Red': '#FF0000', 'Dark Red': '#8B0000', 'Burgundy': '#800020',
+        'Black': '#000000',
+        'White': '#FFFFFF', 'Pearl White': '#F5F5F5', 'Ivory': '#FFFFF0',
+        'Silver': '#C0C0C0', 'Platinum': '#E5E4E2',
+        'Blue': '#0000FF', 'Navy Blue': '#000080', 'Sky Blue': '#87CEEB',
+        'Gray': '#808080', 'Charcoal': '#36454F',
+        'Yellow': '#FFFF00', 'Gold': '#FFD700',
+        'Green': '#008000', 'Forest Green': '#228B22',
+        'Brown': '#A52A2A', 'Beige': '#F5F5DC',
+        'Orange': '#FFA500', 'Bronze': '#CD7F32',
+        'Purple': '#800080', 'Violet': '#8F00FF',
+        'Pink': '#FFC0CB', 'Magenta': '#FF00FF',
+        'Teal': '#008080', 'Turquoise': '#40E0D0',
+    };
+    if (!colorName) return '#808080'; // Default to Gray if undefined
+    return colorMap[colorName.trim()] || '#808080'; // Default to Gray if not found
+};
 
 type RentalEditModalProps = {
     open: boolean;
@@ -41,6 +64,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
     // Selected car info
     const [selectedCar, setSelectedCar] = useState<Car | null>(null);
     const [calculatedTotal, setCalculatedTotal] = useState<number>(0);
+    const [carColor, setCarColor] = useState<string | undefined>(rental?.color);
 
     // Form data
     const [rentalData, setRentalData] = useState<UpdateRental>({});
@@ -62,6 +86,9 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
     // Reset and initialize form when opening modal or rental changes
     useEffect(() => {
         if (open && rental) {
+            // Set the color from the rental if available
+            setCarColor(rental.color);
+
             // Format dates properly for the form fields
             setRentalData({
                 start_date: formatDateForUI(rental.start_date),
@@ -75,7 +102,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
             setError('');
             setFormErrors({});
 
-            // Fetch car data for price calculation
+            // Fetch car data for price calculation and color if needed
             fetchCarData();
         }
     }, [open, rental]);
@@ -88,6 +115,11 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
             setLoading(true);
             const carData = await carsService.getCar(rental.car_id);
             setSelectedCar(carData);
+
+            // If the color isn't in the rental, get it from the car data
+            if (!rental.color && carData.color) {
+                setCarColor(carData.color);
+            }
         } catch (err) {
             console.error('Failed to load car data:', err);
             setError('Failed to load car data for price calculation.');
@@ -299,24 +331,41 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                 ) : (
                     <Box component="form" sx={{ mt: 1 }}>
                         <Grid container spacing={2}>
-                            {/* Car Information (non-editable) */}
+                            {/* Car Information with Better Color Display */}
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
                                     label="Car"
-                                    value={`${rental?.brand} ${rental?.model} - ${rental?.license_plate}`}
+                                    value={carColor
+                                        ? `${rental?.brand} ${rental?.model} - ${rental?.license_plate} (${carColor})`
+                                        : `${rental?.brand} ${rental?.model} - ${rental?.license_plate}`
+                                    }
                                     disabled
                                     InputProps={{
-                                        startAdornment: selectedCar ? (
+                                        startAdornment: (
                                             <InputAdornment position="start">
-                                                <Iconify icon="mdi:car" />
+                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                    {carColor && (
+                                                        <Box
+                                                            sx={{
+                                                                width: 14,
+                                                                height: 14,
+                                                                borderRadius: '50%',
+                                                                bgcolor: getColorHex(carColor),
+                                                                border: carColor.toLowerCase() === 'white' ? '1px solid rgba(0,0,0,0.2)' : 'none',
+                                                                mr: 1
+                                                            }}
+                                                        />
+                                                    )}
+                                                    <Iconify icon="mdi:car" />
+                                                </Box>
                                             </InputAdornment>
-                                        ) : null,
+                                        ),
                                     }}
                                 />
                             </Grid>
 
-                            {/* Customer Information (non-editable) */}
+                            {/* Customer Information */}
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth

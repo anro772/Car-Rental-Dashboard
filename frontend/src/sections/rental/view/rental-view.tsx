@@ -1,3 +1,4 @@
+//src/sections/rental/view/rental-view.tsx
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 

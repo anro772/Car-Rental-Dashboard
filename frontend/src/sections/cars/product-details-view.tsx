@@ -346,7 +346,8 @@ export function CarDetailsView() {
                                                         color={
                                                             rental.status === 'active' ? 'primary' :
                                                                 rental.status === 'completed' ? 'success' :
-                                                                    rental.status === 'cancelled' ? 'error' : 'default'
+                                                                    rental.status === 'pending' ? 'warning' :
+                                                                        rental.status === 'cancelled' ? 'error' : 'default'
                                                         }
                                                     >
                                                         {rental.status}

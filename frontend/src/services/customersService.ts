@@ -12,6 +12,8 @@ export interface Customer {
     phone?: string;
     address?: string;
     driver_license?: string;
+    license_image_url?: string;
+    license_verified?: boolean;
     status?: 'active' | 'inactive';
     created_at?: string;
 }
@@ -87,6 +89,28 @@ const customersService = {
         }
     },
 
+    // Get customers with verified licenses
+    getCustomersWithVerifiedLicenses: async (): Promise<Customer[]> => {
+        try {
+            const response = await axios.get(`${API_URL}/customers/license/verified`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching customers with verified licenses:', error);
+            throw error;
+        }
+    },
+
+    // Get customers with unverified licenses
+    getCustomersWithUnverifiedLicenses: async (): Promise<Customer[]> => {
+        try {
+            const response = await axios.get(`${API_URL}/customers/license/unverified`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching customers with unverified licenses:', error);
+            throw error;
+        }
+    },
+
     // Get customers with current rentals
     getCustomersWithRentals: async (): Promise<Customer[]> => {
         try {
@@ -120,6 +144,19 @@ const customersService = {
         }
     },
 
+    // Update license verification status
+    updateLicenseVerification: async (id: number, verified: boolean): Promise<Customer> => {
+        try {
+            const response = await axios.patch(`${API_URL}/customers/${id}/verify-license`, {
+                license_verified: verified
+            });
+            return response.data;
+        } catch (error) {
+            console.error(`Error updating license verification for customer with ID ${id}:`, error);
+            throw error;
+        }
+    },
+
     // Delete a customer
     deleteCustomer: async (id: number): Promise<void> => {
         try {
@@ -137,6 +174,30 @@ const customersService = {
             return response.data;
         } catch (error) {
             console.error(`Error searching customers with query "${query}":`, error);
+            throw error;
+        }
+    },
+
+    // Helper to upload license image
+    uploadLicenseImage: async (imageFile: File, customerName?: { firstName: string, lastName: string }): Promise<string> => {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+
+        if (customerName) {
+            formData.append('first_name', customerName.firstName);
+            formData.append('last_name', customerName.lastName);
+        }
+
+        try {
+            const response = await axios.post(`${API_URL}/upload?type=license`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            return response.data.filePath;
+        } catch (error) {
+            console.error('Error uploading license image:', error);
             throw error;
         }
     }

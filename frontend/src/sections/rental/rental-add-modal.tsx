@@ -1,4 +1,3 @@
-// src/sections/rental/rental-add-modal.tsx
 import { useState, useEffect } from 'react';
 
 import Dialog from '@mui/material/Dialog';
@@ -18,7 +17,10 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import FormHelperText from '@mui/material/FormHelperText';
-import Typography from '@mui/material/Typography'; // Import Typography
+import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -39,6 +41,35 @@ const getColorHex = (colorName: string | undefined): string => {
     return colorMap[colorName.trim()] || '#808080'; // Default to Gray if not found
 };
 
+// Helper to get car status chip props
+const getCarStatusChip = (status: string) => {
+    switch (status) {
+        case 'available':
+            return {
+                label: 'Available',
+                color: 'success' as const,
+                icon: 'eva:checkmark-circle-fill'
+            };
+        case 'rented':
+            return {
+                label: 'Rented',
+                color: 'primary' as const,
+                icon: 'eva:car-fill'
+            };
+        case 'maintenance':
+            return {
+                label: 'Maintenance',
+                color: 'warning' as const,
+                icon: 'eva:tools-fill'
+            };
+        default:
+            return {
+                label: status,
+                color: 'default' as const,
+                icon: 'eva:question-mark-circle-fill'
+            };
+    }
+};
 
 type RentalAddModalProps = {
     open: boolean;
@@ -54,8 +85,13 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
     const [error, setError] = useState('');
 
     // Available data for dropdowns
-    const [cars, setCars] = useState<Car[]>([]);
+    const [allCars, setAllCars] = useState<Car[]>([]);
+    const [availableCars, setAvailableCars] = useState<Car[]>([]);
+    const [unavailableCars, setUnavailableCars] = useState<Car[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
+
+    // Track if a customer has a verified license
+    const [customerCanRent, setCustomerCanRent] = useState<boolean>(true);
 
     // Form data
     const [rentalData, setRentalData] = useState<Partial<NewRental>>({
@@ -91,11 +127,35 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
     const fetchCarsAndCustomers = async () => {
         try {
             setLoading(true);
-            const carsData = await carsService.getAvailableCars();
-            setCars(carsData);
+
+            // Get all cars to show available and unavailable cars
+            const allCarsData = await carsService.getAllCars();
+
+            // Get available cars separately for filtering
+            const availableCarsData = await carsService.getAvailableCars();
+
+            // Set all cars
+            setAllCars(allCarsData);
+
+            // Filter available and unavailable cars
+            setAvailableCars(availableCarsData);
+            setUnavailableCars(allCarsData.filter(car => car.status !== 'available'));
+
+            // Get all active customers
             const customersData = await customersService.getActiveCustomers();
             setCustomers(customersData);
-            setError('');
+
+            // If a specific customer is pre-selected, check if they have a verified license
+            if (customerId) {
+                const preSelectedCustomer = customersData.find(c => c.id === customerId);
+                if (preSelectedCustomer && !preSelectedCustomer.license_verified) {
+                    setCustomerCanRent(false);
+                    setError(`${preSelectedCustomer.first_name} ${preSelectedCustomer.last_name} does not have a verified license and cannot rent a car.`);
+                } else {
+                    setCustomerCanRent(true);
+                }
+            }
+
         } catch (err) {
             console.error('Failed to load data:', err);
             setError('Failed to load cars and customers data.');
@@ -107,12 +167,28 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
     // Update selected car when car_id changes
     useEffect(() => {
         if (rentalData.car_id) {
-            const car = cars.find(c => c.id === rentalData.car_id);
+            const car = allCars.find(c => c.id === rentalData.car_id);
             setSelectedCar(car || null);
         } else {
             setSelectedCar(null);
         }
-    }, [rentalData.car_id, cars]);
+    }, [rentalData.car_id, allCars]);
+
+    // Check if selected customer has a verified license
+    useEffect(() => {
+        if (rentalData.customer_id) {
+            const customer = customers.find(c => c.id === rentalData.customer_id);
+            if (customer) {
+                setCustomerCanRent(!!customer.license_verified);
+                if (!customer.license_verified) {
+                    setFormErrors(prev => ({
+                        ...prev,
+                        customer_id: 'Customer must have a verified license to rent a car'
+                    }));
+                }
+            }
+        }
+    }, [rentalData.customer_id, customers]);
 
     // Calculate total cost when dates or car changes
     useEffect(() => {
@@ -178,6 +254,23 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         if (!rentalData.total_cost || rentalData.total_cost <= 0) {
             errors.total_cost = 'Total cost is required and must be positive';
         }
+
+        // Check if selected customer has a verified license
+        if (rentalData.customer_id) {
+            const customer = customers.find(c => c.id === rentalData.customer_id);
+            if (customer && !customer.license_verified) {
+                errors.customer_id = 'Customer must have a verified license to rent a car';
+            }
+        }
+
+        // Check if selected car is available
+        if (rentalData.car_id) {
+            const car = allCars.find(c => c.id === rentalData.car_id);
+            if (car && car.status !== 'available') {
+                errors.car_id = `Car is not available (${car.status})`;
+            }
+        }
+
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -185,6 +278,25 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
     // Submission
     const handleSubmit = async () => {
         if (!validateForm()) return;
+
+        // Double-check that customer has a verified license
+        if (rentalData.customer_id) {
+            const customer = customers.find(c => c.id === rentalData.customer_id);
+            if (customer && !customer.license_verified) {
+                setError('Cannot create rental: Customer must have a verified license');
+                return;
+            }
+        }
+
+        // Double-check that car is available
+        if (rentalData.car_id) {
+            const car = allCars.find(c => c.id === rentalData.car_id);
+            if (car && car.status !== 'available') {
+                setError(`Cannot create rental: Car is not available (${car.status})`);
+                return;
+            }
+        }
+
         try {
             setSubmitting(true);
             await rentalsService.createRental(rentalData as NewRental);
@@ -203,6 +315,50 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     };
 
+    // Render car item for the dropdown
+    const renderCarItem = (car: Car) => {
+        const isAvailable = car.status === 'available';
+        const statusChip = getCarStatusChip(car.status ?? 'unknown');
+
+        return (
+            <MenuItem
+                key={car.id}
+                value={car.id}
+                disabled={!isAvailable}
+                sx={{
+                    opacity: isAvailable ? 1 : 0.7,
+                    '&.Mui-disabled': {
+                        color: 'text.secondary',
+                    }
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    {/* Color indicator */}
+                    <Box sx={{
+                        width: 14, height: 14, borderRadius: '50%', mr: 1.5, flexShrink: 0,
+                        bgcolor: getColorHex(car.color),
+                        border: car.color === 'White' ? '1px solid rgba(0,0,0,0.2)' : 'none'
+                    }} />
+
+                    <Typography variant="body2" component="span" sx={{ flexGrow: 1 }}>
+                        {car.brand} {car.model} ({car.color || 'N/A'}) - {car.license_plate}
+                    </Typography>
+
+                    <Typography variant="caption" sx={{ color: 'text.secondary', ml: 1, mr: 1 }}>
+                        ${car.daily_rate}/day
+                    </Typography>
+
+                    <Chip
+                        label={statusChip.label}
+                        color={statusChip.color}
+                        size="small"
+                        icon={<Iconify icon={statusChip.icon} />}
+                    />
+                </Box>
+            </MenuItem>
+        );
+    };
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>
@@ -214,6 +370,13 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
 
             <DialogContent>
                 {error && <Alert severity="error" sx={{ mb: 3, mt: 2 }}>{error}</Alert>}
+
+                {!loading && (
+                    <Alert severity="info" sx={{ mb: 3, mt: 2 }}>
+                        Only customers with a verified driver's license can rent a car. Only available cars can be selected.
+                    </Alert>
+                )}
+
                 {loading ? (
                     <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}><CircularProgress /></Box>
                 ) : (
@@ -225,31 +388,42 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                     <InputLabel id="car-label">Car</InputLabel>
                                     <Select
                                         labelId="car-label" name="car_id" value={rentalData.car_id || ''}
-                                        label="Car" onChange={handleSelectChange} disabled={submitting}
+                                        label="Car" onChange={handleSelectChange} disabled={submitting || !customerCanRent}
                                         // Render value to show selected car info (optional)
                                         renderValue={(selected) => {
-                                            const car = cars.find(c => c.id === selected);
+                                            const car = allCars.find(c => c.id === selected);
                                             return car ? `${car.brand} ${car.model} (${car.color || 'N/A'}) - ${car.license_plate}` : '';
                                         }}
                                     >
-                                        {cars.map((car) => (
-                                            <MenuItem key={car.id} value={car.id}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                                    {/* Optional: Color indicator */}
-                                                    <Box sx={{
-                                                        width: 14, height: 14, borderRadius: '50%', mr: 1.5, flexShrink: 0,
-                                                        bgcolor: getColorHex(car.color),
-                                                        border: car.color === 'White' ? '1px solid rgba(0,0,0,0.2)' : 'none'
-                                                    }} />
-                                                    <Typography variant="body2" component="span" sx={{ flexGrow: 1 }}>
-                                                        {car.brand} {car.model} ({car.color || 'N/A'}) - {car.license_plate}
-                                                    </Typography>
-                                                    <Typography variant="caption" sx={{ color: 'text.secondary', ml: 1 }}>
-                                                        (${car.daily_rate}/day)
-                                                    </Typography>
-                                                </Box>
+                                        {/* Available Cars Section */}
+                                        <MenuItem disabled>
+                                            <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                Available Cars
+                                            </Typography>
+                                        </MenuItem>
+
+                                        {availableCars.length > 0 ? (
+                                            availableCars.map(car => renderCarItem(car))
+                                        ) : (
+                                            <MenuItem disabled>
+                                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                                    No available cars
+                                                </Typography>
                                             </MenuItem>
-                                        ))}
+                                        )}
+
+                                        {/* Unavailable Cars Section */}
+                                        {unavailableCars.length > 0 && (
+                                            <>
+                                                <Divider sx={{ my: 1 }} />
+                                                <MenuItem disabled>
+                                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                                                        Unavailable Cars
+                                                    </Typography>
+                                                </MenuItem>
+                                                {unavailableCars.map(car => renderCarItem(car))}
+                                            </>
+                                        )}
                                     </Select>
                                     {formErrors.car_id && <FormHelperText>{formErrors.car_id}</FormHelperText>}
                                 </FormControl>
@@ -260,14 +434,87 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                 <FormControl fullWidth error={!!formErrors.customer_id}>
                                     <InputLabel id="customer-label">Customer</InputLabel>
                                     <Select
-                                        labelId="customer-label" name="customer_id" value={rentalData.customer_id || ''}
-                                        label="Customer" onChange={handleSelectChange} disabled={submitting || !!customerId}
+                                        labelId="customer-label"
+                                        name="customer_id"
+                                        value={rentalData.customer_id || ''}
+                                        label="Customer"
+                                        onChange={handleSelectChange}
+                                        disabled={submitting || !!customerId}
                                     >
-                                        {customers.map((customer) => (
-                                            <MenuItem key={customer.id} value={customer.id}>
-                                                {customer.first_name} {customer.last_name} - {customer.email}
+                                        {/* Verified Customers */}
+                                        <MenuItem disabled>
+                                            <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                Customers with Verified Licenses
+                                            </Typography>
+                                        </MenuItem>
+
+                                        {customers.filter(c => c.license_verified).length > 0 ? (
+                                            customers.filter(c => c.license_verified).map((customer) => (
+                                                <MenuItem key={customer.id} value={customer.id}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                                        <Typography variant="body2" component="span" sx={{ flexGrow: 1 }}>
+                                                            {customer.first_name} {customer.last_name} - {customer.email}
+                                                        </Typography>
+
+                                                        <Chip
+                                                            label="Verified"
+                                                            color="success"
+                                                            size="small"
+                                                            icon={<Iconify icon="eva:checkmark-circle-fill" />}
+                                                            sx={{ ml: 1 }}
+                                                        />
+                                                    </Box>
+                                                </MenuItem>
+                                            ))
+                                        ) : (
+                                            <MenuItem disabled>
+                                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                                    No customers with verified licenses
+                                                </Typography>
                                             </MenuItem>
-                                        ))}
+                                        )}
+
+                                        {/* Unverified Customers */}
+                                        {customers.filter(c => !c.license_verified).length > 0 && (
+                                            <>
+                                                <Divider sx={{ my: 1 }} />
+                                                <MenuItem disabled>
+                                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                                                        Customers with Unverified Licenses
+                                                    </Typography>
+                                                </MenuItem>
+
+                                                {customers.filter(c => !c.license_verified).map((customer) => (
+                                                    <MenuItem
+                                                        key={customer.id}
+                                                        value={customer.id}
+                                                        disabled={true}
+                                                        sx={{
+                                                            opacity: 0.6,
+                                                            '&.Mui-disabled': {
+                                                                color: 'text.secondary',
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                                            <Typography variant="body2" component="span" sx={{ flexGrow: 1 }}>
+                                                                {customer.first_name} {customer.last_name} - {customer.email}
+                                                            </Typography>
+
+                                                            <Tooltip title="License not verified">
+                                                                <Chip
+                                                                    label="Unverified"
+                                                                    color="error"
+                                                                    size="small"
+                                                                    icon={<Iconify icon="eva:alert-triangle-fill" />}
+                                                                    sx={{ ml: 1 }}
+                                                                />
+                                                            </Tooltip>
+                                                        </Box>
+                                                    </MenuItem>
+                                                ))}
+                                            </>
+                                        )}
                                     </Select>
                                     {formErrors.customer_id && <FormHelperText>{formErrors.customer_id}</FormHelperText>}
                                 </FormControl>
@@ -277,15 +524,21 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth label="Start Date" name="start_date" type="date"
-                                    value={rentalData.start_date || ''} onChange={handleInputChange} disabled={submitting}
-                                    InputLabelProps={{ shrink: true }} error={!!formErrors.start_date} helperText={formErrors.start_date}
+                                    value={rentalData.start_date || ''} onChange={handleInputChange}
+                                    disabled={submitting || !customerCanRent}
+                                    InputLabelProps={{ shrink: true }}
+                                    error={!!formErrors.start_date}
+                                    helperText={formErrors.start_date}
                                 />
                             </Grid>
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth label="End Date" name="end_date" type="date"
-                                    value={rentalData.end_date || ''} onChange={handleInputChange} disabled={submitting}
-                                    InputLabelProps={{ shrink: true }} error={!!formErrors.end_date} helperText={formErrors.end_date}
+                                    value={rentalData.end_date || ''} onChange={handleInputChange}
+                                    disabled={submitting || !customerCanRent}
+                                    InputLabelProps={{ shrink: true }}
+                                    error={!!formErrors.end_date}
+                                    helperText={formErrors.end_date}
                                 />
                             </Grid>
 
@@ -293,7 +546,14 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth>
                                     <InputLabel id="status-label">Status</InputLabel>
-                                    <Select labelId="status-label" name="status" value={rentalData.status || 'pending'} label="Status" onChange={handleSelectChange} disabled={submitting}>
+                                    <Select
+                                        labelId="status-label"
+                                        name="status"
+                                        value={rentalData.status || 'pending'}
+                                        label="Status"
+                                        onChange={handleSelectChange}
+                                        disabled={submitting || !customerCanRent}
+                                    >
                                         <MenuItem value="pending">Pending</MenuItem>
                                         <MenuItem value="active">Active</MenuItem>
                                     </Select>
@@ -302,7 +562,14 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth>
                                     <InputLabel id="payment-status-label">Payment Status</InputLabel>
-                                    <Select labelId="payment-status-label" name="payment_status" value={rentalData.payment_status || 'unpaid'} label="Payment Status" onChange={handleSelectChange} disabled={submitting}>
+                                    <Select
+                                        labelId="payment-status-label"
+                                        name="payment_status"
+                                        value={rentalData.payment_status || 'unpaid'}
+                                        label="Payment Status"
+                                        onChange={handleSelectChange}
+                                        disabled={submitting || !customerCanRent}
+                                    >
                                         <MenuItem value="unpaid">Unpaid</MenuItem>
                                         <MenuItem value="partial">Partial</MenuItem>
                                         <MenuItem value="paid">Paid</MenuItem>
@@ -314,14 +581,24 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth label="Total Cost" name="total_cost" type="number"
-                                    value={rentalData.total_cost || ''} onChange={handleInputChange} disabled={submitting}
+                                    value={rentalData.total_cost || ''} onChange={handleInputChange}
+                                    disabled={submitting || !customerCanRent}
                                     InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                                     error={!!formErrors.total_cost}
                                     helperText={formErrors.total_cost || (selectedCar ? `Calculated: $${calculatedTotal}` : '')}
                                 />
                             </Grid>
                             <Grid item xs={12} md={6}>
-                                <TextField fullWidth label="Notes" name="notes" multiline rows={2} value={rentalData.notes || ''} onChange={handleInputChange} disabled={submitting} />
+                                <TextField
+                                    fullWidth
+                                    label="Notes"
+                                    name="notes"
+                                    multiline
+                                    rows={2}
+                                    value={rentalData.notes || ''}
+                                    onChange={handleInputChange}
+                                    disabled={submitting || !customerCanRent}
+                                />
                             </Grid>
                         </Grid>
                     </Box>
@@ -330,7 +607,12 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
 
             <DialogActions>
                 <Button onClick={onClose} disabled={submitting}>Cancel</Button>
-                <Button onClick={handleSubmit} variant="contained" disabled={submitting || loading} startIcon={submitting ? <CircularProgress size={20} /> : null}>
+                <Button
+                    onClick={handleSubmit}
+                    variant="contained"
+                    disabled={submitting || loading || !customerCanRent}
+                    startIcon={submitting ? <CircularProgress size={20} /> : null}
+                >
                     {submitting ? 'Creating...' : 'Create Rental'}
                 </Button>
             </DialogActions>

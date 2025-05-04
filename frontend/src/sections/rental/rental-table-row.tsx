@@ -1,4 +1,3 @@
-// src/sections/rental/rental-table-row.tsx
 import { useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
@@ -22,6 +21,9 @@ import { useRouter } from 'src/routes/hooks';
 
 import { RentalExtended } from 'src/services/rentalsService';
 import carsService, { Car } from 'src/services/carsService';
+import customersService from 'src/services/customersService';
+import contractService from 'src/services/contractService';
+import invoiceService from 'src/services/invoiceService';
 import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
@@ -104,6 +106,7 @@ export function RentalTableRow({
     const [openEditModal, setOpenEditModal] = useState(false);
     const [carColor, setCarColor] = useState<string | undefined>(color);
     const [isLoadingCar, setIsLoadingCar] = useState(!color && !!car_id);
+    const [customerData, setCustomerData] = useState<any>(null);
 
     const router = useRouter();
 
@@ -153,6 +156,40 @@ export function RentalTableRow({
 
     const handleEditSuccess = () => {
         onUpdateStatus(status);
+    };
+
+    // Generate and download contract
+    const handleGenerateContract = async () => {
+        try {
+            // First, we need to get the full customer data if we don't have it
+            if (!customerData && customer_id) {
+                const customer = await customersService.getCustomer(customer_id);
+                setCustomerData(customer);
+                await contractService.downloadContract(customer, row);
+            } else if (customerData) {
+                await contractService.downloadContract(customerData, row);
+            }
+            handleCloseMenu();
+        } catch (error) {
+            console.error('Failed to generate contract:', error);
+        }
+    };
+
+    // Generate and download invoice
+    const handleGenerateInvoice = async () => {
+        try {
+            // First, we need to get the full customer data if we don't have it
+            if (!customerData && customer_id) {
+                const customer = await customersService.getCustomer(customer_id);
+                setCustomerData(customer);
+                await invoiceService.downloadInvoice(customer, row);
+            } else if (customerData) {
+                await invoiceService.downloadInvoice(customerData, row);
+            }
+            handleCloseMenu();
+        } catch (error) {
+            console.error('Failed to generate invoice:', error);
+        }
     };
 
     return (
@@ -277,7 +314,7 @@ export function RentalTableRow({
                 onClose={handleCloseMenu}
                 anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                slotProps={{ paper: { sx: { width: 160 } } }}
+                slotProps={{ paper: { sx: { width: 180 } } }}
             >
                 <MenuItem onClick={handleEditRental} disabled={status === 'completed' || status === 'cancelled'}>
                     <Iconify icon="eva:edit-fill" sx={{ mr: 2 }} />Edit
@@ -290,6 +327,16 @@ export function RentalTableRow({
                 <MenuItem onClick={handleViewCar}>
                     <Iconify icon="eva:car-fill" sx={{ mr: 2 }} />Car
                 </MenuItem>
+                <MenuItem onClick={handleGenerateContract}>
+                    <Iconify icon="mdi:file-document-outline" sx={{ mr: 2 }} />
+                    Afisare contract
+                </MenuItem>
+                {status === 'completed' && (
+                    <MenuItem onClick={handleGenerateInvoice}>
+                        <Iconify icon="mdi:receipt" sx={{ mr: 2 }} />
+                        Descarca factura
+                    </MenuItem>
+                )}
                 <MenuItem onClick={onDeleteRow} sx={{ color: 'error.main' }} disabled={status === 'active'}>
                     <Iconify icon="eva:trash-2-outline" sx={{ mr: 2 }} />Delete
                 </MenuItem>

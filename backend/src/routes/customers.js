@@ -1,4 +1,5 @@
-// src/routes/customers.js
+// src/routes/customers.js - Update to handle license image and verification
+
 const express = require('express');
 const router = express.Router();
 
@@ -54,6 +55,30 @@ router.get('/status/inactive', async (req, res) => {
     }
 });
 
+// GET customers with verified licenses
+router.get('/license/verified', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            "SELECT * FROM customers WHERE license_verified = TRUE"
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET customers with unverified licenses
+router.get('/license/unverified', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            "SELECT * FROM customers WHERE license_image_url IS NOT NULL AND license_verified = FALSE"
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET customers with current rentals
 router.get('/with-rentals/current', async (req, res) => {
     try {
@@ -73,7 +98,17 @@ router.get('/with-rentals/current', async (req, res) => {
 // POST create a new customer
 router.post('/', async (req, res) => {
     try {
-        const { first_name, last_name, email, phone, address, driver_license, status } = req.body;
+        const {
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            driver_license,
+            license_image_url,
+            license_verified,
+            status
+        } = req.body;
 
         if (!first_name || !last_name || !email) {
             return res.status(400).json({ error: 'First name, last name, and email are required' });
@@ -81,9 +116,19 @@ router.post('/', async (req, res) => {
 
         const [result] = await req.app.locals.db.query(
             `INSERT INTO customers 
-            (first_name, last_name, email, phone, address, driver_license, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [first_name, last_name, email, phone, address, driver_license, status || 'active']
+            (first_name, last_name, email, phone, address, driver_license, license_image_url, license_verified, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                first_name,
+                last_name,
+                email,
+                phone,
+                address,
+                driver_license,
+                license_image_url || null,
+                license_verified || false,
+                status || 'active'
+            ]
         );
 
         res.status(201).json({
@@ -94,6 +139,8 @@ router.post('/', async (req, res) => {
             phone,
             address,
             driver_license,
+            license_image_url,
+            license_verified: license_verified || false,
             status: status || 'active'
         });
     } catch (error) {
@@ -108,7 +155,17 @@ router.post('/', async (req, res) => {
 // PUT update an existing customer
 router.put('/:id', async (req, res) => {
     try {
-        const { first_name, last_name, email, phone, address, driver_license, status } = req.body;
+        const {
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            driver_license,
+            license_image_url,
+            license_verified,
+            status
+        } = req.body;
 
         // Check if customer exists
         const [existingCustomer] = await req.app.locals.db.query(
@@ -123,7 +180,7 @@ router.put('/:id', async (req, res) => {
         await req.app.locals.db.query(
             `UPDATE customers 
             SET first_name = ?, last_name = ?, email = ?, phone = ?, 
-                address = ?, driver_license = ?, status = ? 
+                address = ?, driver_license = ?, license_image_url = ?, license_verified = ?, status = ? 
             WHERE id = ?`,
             [
                 first_name || existingCustomer[0].first_name,
@@ -132,6 +189,8 @@ router.put('/:id', async (req, res) => {
                 phone !== undefined ? phone : existingCustomer[0].phone,
                 address !== undefined ? address : existingCustomer[0].address,
                 driver_license !== undefined ? driver_license : existingCustomer[0].driver_license,
+                license_image_url !== undefined ? license_image_url : existingCustomer[0].license_image_url,
+                license_verified !== undefined ? license_verified : existingCustomer[0].license_verified,
                 status || existingCustomer[0].status,
                 req.params.id
             ]
@@ -149,6 +208,42 @@ router.put('/:id', async (req, res) => {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ error: 'Email address already exists' });
         }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PATCH update license verification status
+router.patch('/:id/verify-license', async (req, res) => {
+    try {
+        const { license_verified } = req.body;
+
+        if (license_verified === undefined) {
+            return res.status(400).json({ error: 'License verification status is required' });
+        }
+
+        // Check if customer exists
+        const [existingCustomer] = await req.app.locals.db.query(
+            'SELECT * FROM customers WHERE id = ?',
+            [req.params.id]
+        );
+
+        if (existingCustomer.length === 0) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
+
+        await req.app.locals.db.query(
+            `UPDATE customers SET license_verified = ? WHERE id = ?`,
+            [license_verified, req.params.id]
+        );
+
+        // Get and return the updated customer
+        const [updatedCustomer] = await req.app.locals.db.query(
+            'SELECT * FROM customers WHERE id = ?',
+            [req.params.id]
+        );
+
+        res.json(updatedCustomer[0]);
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });

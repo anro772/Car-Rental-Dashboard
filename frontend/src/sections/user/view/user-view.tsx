@@ -33,6 +33,11 @@ import { CustomerTableHead } from '../user-table-head';
 import { TableEmptyRows } from '../table-empty-rows';
 import { CustomerTableToolbar } from '../user-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
+import { useRef } from 'react';
+import Paper from '@mui/material/Paper';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+
 
 import customersService, { Customer, NewCustomer } from 'src/services/customersService';
 
@@ -52,6 +57,8 @@ export function CustomerView() {
     phone: '',
     address: '',
     driver_license: '',
+    license_image_url: '',
+    license_verified: false,
     status: 'active'
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -60,6 +67,9 @@ export function CustomerView() {
     message: '',
     severity: 'success' as 'success' | 'error' | 'info' | 'warning'
   });
+
+  const [licenseImagePreview, setLicenseImagePreview] = useState<string | null>(null);
+  const licenseFileInputRef = useRef<HTMLInputElement>(null);
 
   const table = useTable();
 
@@ -72,6 +82,48 @@ export function CustomerView() {
   });
 
   const notFound = !dataFiltered.length && !!filterName;
+
+  // Add handler for license file selection
+  const handleLicenseFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Create a preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setLicenseImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Add handlers for drag and drop
+  const handleLicenseDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleLicenseDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    // Create a new event to trigger the file input change handler
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    if (licenseFileInputRef.current) {
+      licenseFileInputRef.current.files = dataTransfer.files;
+      const event = new Event('change', { bubbles: true });
+      licenseFileInputRef.current.dispatchEvent(event);
+    }
+  };
+
+  const handleLicenseBrowseClick = () => {
+    licenseFileInputRef.current?.click();
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -203,17 +255,28 @@ export function CustomerView() {
       phone: '',
       address: '',
       driver_license: '',
+      license_image_url: '',
+      license_verified: false,
       status: 'active'
     });
+    setLicenseImagePreview(null);
     setFormErrors({});
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewCustomer(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const { name, value, type, checked } = e.target;
+
+    if (type === 'checkbox') {
+      setNewCustomer(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+    } else {
+      setNewCustomer(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
 
     // Clear error when field is changed
     if (formErrors[name]) {
@@ -249,6 +312,23 @@ export function CustomerView() {
     if (!validateForm()) return;
 
     try {
+      // Upload license image if provided
+      if (licenseFileInputRef.current?.files?.length) {
+        const file = licenseFileInputRef.current.files[0];
+        try {
+          const filePath = await customersService.uploadLicenseImage(file, {
+            firstName: newCustomer.first_name,
+            lastName: newCustomer.last_name
+          });
+
+          // Update the newCustomer with the image path
+          newCustomer.license_image_url = filePath;
+        } catch (uploadError) {
+          console.error('License image upload failed:', uploadError);
+          showSnackbar('Failed to upload license image. Will continue with customer creation.', 'warning');
+        }
+      }
+
       const newCreatedCustomer = await customersService.createCustomer(newCustomer);
 
       // Add new customer to the list
@@ -339,6 +419,7 @@ export function CustomerView() {
                   { id: 'phone', label: 'Phone' },
                   { id: 'address', label: 'Address' },
                   { id: 'driver_license', label: 'Driver License' },
+                  { id: 'license_status', label: 'License Status' }, // Add this new column
                   { id: 'status', label: 'Status' },
                   { id: '' },
                 ]}
@@ -465,6 +546,72 @@ export function CustomerView() {
                 value={newCustomer.driver_license}
                 onChange={handleFormChange}
               />
+            </FormControl>
+            {/* License Image Upload */}
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>Driver's License Image</Typography>
+            <Paper
+              sx={{
+                border: '2px dashed #ccc',
+                p: 3,
+                textAlign: 'center',
+                mb: 2,
+                cursor: 'pointer',
+                height: licenseImagePreview ? 'auto' : 200,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#f8f9fa'
+              }}
+              onDragOver={handleLicenseDragOver}
+              onDrop={handleLicenseDrop}
+              onClick={handleLicenseBrowseClick}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLicenseFileSelect}
+                ref={licenseFileInputRef}
+                style={{ display: 'none' }}
+              />
+
+              {licenseImagePreview ? (
+                <>
+                  <img
+                    src={licenseImagePreview}
+                    alt="License preview"
+                    style={{ maxWidth: '100%', maxHeight: 200, marginBottom: 10 }}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Click to change image
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
+                  <Typography variant="body1" sx={{ mt: 2 }}>
+                    Drag & drop license image here or click to browse
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Supported formats: JPG, PNG, JPEG, GIF
+                  </Typography>
+                </>
+              )}
+            </Paper>
+
+            {/* License Verification Checkbox */}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="license_verified"
+                    checked={!!newCustomer.license_verified}
+                    onChange={handleFormChange}
+                  />
+                }
+                label="Verify License"
+              />
+              <FormHelperText>Check this box if you've verified the customer's license</FormHelperText>
             </FormControl>
           </Box>
         </DialogContent>

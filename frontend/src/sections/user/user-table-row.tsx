@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
@@ -21,6 +21,8 @@ import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import InputLabel from '@mui/material/InputLabel';
+import Paper from '@mui/material/Paper';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { Iconify } from 'src/components/iconify';
 import { useRouter } from 'src/routes/hooks';
@@ -44,7 +46,7 @@ export function CustomerTableRow({
   onDeleteRow,
   onUpdateSuccess
 }: Props) {
-  const { id, first_name, last_name, email, phone, address, driver_license, status } = row;
+  const { id, first_name, last_name, email, phone, address, driver_license, license_image_url, license_verified, status } = row;
 
   const [open, setOpen] = useState<HTMLElement | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -55,12 +57,25 @@ export function CustomerTableRow({
     phone,
     address,
     driver_license,
+    license_image_url,
+    license_verified,
     status
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
 
+  // Add state for license image preview and file input reference
+  const [licenseImagePreview, setLicenseImagePreview] = useState<string | null>(license_image_url || null);
+  const licenseFileInputRef = useRef<HTMLInputElement>(null);
+
   const router = useRouter();
+
+  // Initialize license image preview if available
+  useEffect(() => {
+    if (license_image_url) {
+      setLicenseImagePreview(license_image_url);
+    }
+  }, [license_image_url]);
 
   const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
     setOpen(event.currentTarget);
@@ -85,16 +100,77 @@ export function CustomerTableRow({
       phone,
       address,
       driver_license,
+      license_image_url,
+      license_verified,
       status
     });
+    setLicenseImagePreview(license_image_url || null);
     setFormErrors({});
   };
-
-  // Update the handleRentals function in your CustomerTableRow component:
 
   const handleRentals = () => {
     router.push(`/rental?customer=${id}`);
     handleCloseMenu();
+  };
+
+  // License image handlers
+  const handleLicenseFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Create a preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setLicenseImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLicenseDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleLicenseDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    // Create a new event to trigger the file input change handler
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    if (licenseFileInputRef.current) {
+      licenseFileInputRef.current.files = dataTransfer.files;
+      const event = new Event('change', { bubbles: true });
+      licenseFileInputRef.current.dispatchEvent(event);
+    }
+  };
+
+  const handleLicenseBrowseClick = () => {
+    licenseFileInputRef.current?.click();
+  };
+
+  // Add handler for quick license verification
+  const handleLicenseVerification = async (verified: boolean) => {
+    try {
+      setLoading(true);
+      const updatedCustomer = await customersService.updateLicenseVerification(id, verified);
+
+      // Notify parent component of successful update
+      if (onUpdateSuccess) {
+        onUpdateSuccess(updatedCustomer);
+      }
+
+      handleCloseMenu();
+    } catch (error) {
+      console.error('Failed to update license verification:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Separate handlers for different input types
@@ -119,6 +195,14 @@ export function CustomerTableRow({
     setEditCustomer(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setEditCustomer(prev => ({
+      ...prev,
+      [name]: checked
     }));
   };
 
@@ -148,6 +232,24 @@ export function CustomerTableRow({
 
     try {
       setLoading(true);
+
+      // Upload license image if provided
+      if (licenseFileInputRef.current?.files?.length) {
+        const file = licenseFileInputRef.current.files[0];
+        try {
+          const filePath = await customersService.uploadLicenseImage(file, {
+            firstName: editCustomer.first_name || '',
+            lastName: editCustomer.last_name || ''
+          });
+
+          // Update the editCustomer with the image path
+          editCustomer.license_image_url = filePath;
+        } catch (uploadError) {
+          console.error('License image upload failed:', uploadError);
+          // Continue with customer update even if image upload fails
+        }
+      }
+
       const updatedCustomer = await customersService.updateCustomer(id, editCustomer);
 
       handleCloseEditDialog();
@@ -208,6 +310,32 @@ export function CustomerTableRow({
 
         <TableCell>{driver_license || '-'}</TableCell>
 
+        {/* License Status Cell */}
+        <TableCell>
+          {license_verified ? (
+            <Chip
+              label="Verified"
+              color="success"
+              size="small"
+              icon={<Iconify icon="eva:checkmark-circle-fill" />}
+            />
+          ) : license_image_url ? (
+            <Chip
+              label="Unverified"
+              color="warning"
+              size="small"
+              icon={<Iconify icon="eva:clock-fill" />}
+            />
+          ) : (
+            <Chip
+              label="No License"
+              color="default"
+              size="small"
+              variant="outlined"
+            />
+          )}
+        </TableCell>
+
         <TableCell>
           <Chip
             label={status || 'active'}
@@ -227,7 +355,7 @@ export function CustomerTableRow({
         </TableCell>
       </TableRow>
 
-      {/* Menu with Edit, Rentals, and Delete */}
+      {/* Menu with Edit, Rentals, License Verification, and Delete */}
       <Popover
         open={!!open}
         anchorEl={open}
@@ -236,7 +364,7 @@ export function CustomerTableRow({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{
           paper: {
-            sx: { width: 140 },
+            sx: { width: 180 },
           },
         }}
       >
@@ -248,6 +376,11 @@ export function CustomerTableRow({
         <MenuItem onClick={handleRentals}>
           <Iconify icon="mdi:car-key" sx={{ mr: 2 }} />
           Rentals
+        </MenuItem>
+
+        <MenuItem onClick={() => handleLicenseVerification(!license_verified)}>
+          <Iconify icon={license_verified ? "eva:shield-fill" : "eva:shield-outline"} sx={{ mr: 2 }} />
+          {license_verified ? 'Unverify License' : 'Verify License'}
         </MenuItem>
 
         <MenuItem onClick={onDeleteRow} sx={{ color: 'error.main' }}>
@@ -336,6 +469,73 @@ export function CustomerTableRow({
                 value={editCustomer.driver_license}
                 onChange={handleInputChange}
               />
+            </FormControl>
+
+            {/* License Image Upload */}
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>Driver's License Image</Typography>
+            <Paper
+              sx={{
+                border: '2px dashed #ccc',
+                p: 3,
+                textAlign: 'center',
+                mb: 2,
+                cursor: 'pointer',
+                height: licenseImagePreview ? 'auto' : 200,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#f8f9fa'
+              }}
+              onDragOver={handleLicenseDragOver}
+              onDrop={handleLicenseDrop}
+              onClick={handleLicenseBrowseClick}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLicenseFileSelect}
+                ref={licenseFileInputRef}
+                style={{ display: 'none' }}
+              />
+
+              {licenseImagePreview ? (
+                <>
+                  <img
+                    src={licenseImagePreview}
+                    alt="License preview"
+                    style={{ maxWidth: '100%', maxHeight: 200, marginBottom: 10 }}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Click to change image
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
+                  <Typography variant="body1" sx={{ mt: 2 }}>
+                    Drag & drop license image here or click to browse
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Supported formats: JPG, PNG, JPEG, GIF
+                  </Typography>
+                </>
+              )}
+            </Paper>
+
+            {/* License Verification Checkbox */}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="license_verified"
+                    checked={!!editCustomer.license_verified}
+                    onChange={handleCheckboxChange}
+                  />
+                }
+                label="Verify License"
+              />
+              <FormHelperText>Check this box if you've verified the customer's license</FormHelperText>
             </FormControl>
 
             <FormControl fullWidth sx={{ mb: 2 }}>

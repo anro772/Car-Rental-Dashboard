@@ -29,6 +29,8 @@ async function createTables(pool) {
                 phone VARCHAR(20),
                 address TEXT,
                 driver_license VARCHAR(50),
+                license_image_url VARCHAR(255),
+                license_verified BOOLEAN DEFAULT FALSE,
                 status ENUM('active', 'inactive') DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )

@@ -1,4 +1,4 @@
-// src/routes/upload.js
+// src/routes/upload.js - Updates to handle license images
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -8,8 +8,16 @@ const fs = require('fs');
 // Configure storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        // Path to your frontend assets folder
-        const uploadDir = path.join(__dirname, '../../../frontend/src/assets/cars');
+        // Determine the upload directory based on query parameter
+        let uploadDir;
+
+        if (req.query.type === 'license') {
+            // License images go to licenses folder
+            uploadDir = path.join(__dirname, '../../../frontend/src/assets/licenses');
+        } else {
+            // Car images go to cars folder (default)
+            uploadDir = path.join(__dirname, '../../../frontend/src/assets/cars');
+        }
 
         // Create directory if it doesn't exist
         if (!fs.existsSync(uploadDir)) {
@@ -18,22 +26,34 @@ const storage = multer.diskStorage({
 
         cb(null, uploadDir);
     },
-    // src/routes/upload.js (update only the filename function)
     filename: function (req, file, cb) {
-        // Check if the originalname is already in the format we want
-        if (file.originalname.includes('-')) {
-            // Use the original filename if it appears to be in the format we want
-            cb(null, file.originalname);
-        } else {
-            // Generate filename based on brand and model without timestamp
-            const brand = req.body.brand || 'car';
-            const model = req.body.model || 'model';
+        // Generate filename based on upload type
+        if (req.query.type === 'license') {
+            const firstName = req.body.first_name || 'unknown';
+            const lastName = req.body.last_name || 'customer';
+            const timestamp = Date.now();
             const ext = path.extname(file.originalname);
 
-            const safeBrand = brand.replace(/\s+/g, '-').toLowerCase();
-            const safeModel = model.replace(/\s+/g, '-').toLowerCase();
+            const safeFirstName = firstName.replace(/\s+/g, '-').toLowerCase();
+            const safeLastName = lastName.replace(/\s+/g, '-').toLowerCase();
 
-            cb(null, `${safeBrand}-${safeModel}${ext}`);
+            cb(null, `license-${safeFirstName}-${safeLastName}-${timestamp}${ext}`);
+        } else {
+            // Handle car images as before
+            if (file.originalname.includes('-')) {
+                // Use the original filename
+                cb(null, file.originalname);
+            } else {
+                // Generate filename for car
+                const brand = req.body.brand || 'car';
+                const model = req.body.model || 'model';
+                const ext = path.extname(file.originalname);
+
+                const safeBrand = brand.replace(/\s+/g, '-').toLowerCase();
+                const safeModel = model.replace(/\s+/g, '-').toLowerCase();
+
+                cb(null, `${safeBrand}-${safeModel}${ext}`);
+            }
         }
     }
 });
@@ -54,15 +74,20 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// POST endpoint for file upload
+// POST endpoint for file upload (handles both car and license images)
 router.post('/', upload.single('image'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Return the relative path that can be used in the image_url field
-        const relativePath = `src/assets/cars/${req.file.filename}`;
+        // Determine the relative path based on upload type
+        let relativePath;
+        if (req.query.type === 'license') {
+            relativePath = `src/assets/licenses/${req.file.filename}`;
+        } else {
+            relativePath = `src/assets/cars/${req.file.filename}`;
+        }
 
         res.json({
             success: true,

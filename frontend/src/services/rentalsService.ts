@@ -1,12 +1,10 @@
 // src/services/rentalsService.ts
 import axios from 'axios';
-// Remove unused imports if Car and Customer aren't directly used here
 // import { Car } from './carsService';
 // import { Customer } from './customersService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Rental interface to match backend schema
 export interface Rental {
     id: number;
     car_id: number;
@@ -20,8 +18,6 @@ export interface Rental {
     created_at?: string;
 }
 
-// Extended rental interface with related car and customer data
-// Make sure your backend API endpoints actually return these fields
 export interface RentalExtended extends Rental {
     brand?: string;
     model?: string;
@@ -34,8 +30,7 @@ export interface RentalExtended extends Rental {
     days_overdue?: number;
 }
 
-// Type for creating a new rental
-// Ensure default status/payment_status are handled correctly if needed
+
 export type NewRental = Omit<Rental, 'id' | 'created_at'>;
 // If status/payment are optional on creation, use Partial or adjust backend
 // export type NewRental = Omit<Rental, 'id' | 'created_at' | 'status' | 'payment_status'> & {
@@ -44,7 +39,6 @@ export type NewRental = Omit<Rental, 'id' | 'created_at'>;
 // };
 
 
-// Type for updating a rental (usually only specific fields are updatable)
 export type UpdateRental = Partial<Omit<Rental, 'id' | 'created_at' | 'car_id' | 'customer_id'>>;
 
 const rentalsService = {

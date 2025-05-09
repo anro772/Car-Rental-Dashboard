@@ -318,7 +318,8 @@ export function CustomerView() {
         try {
           const filePath = await customersService.uploadLicenseImage(file, {
             firstName: newCustomer.first_name,
-            lastName: newCustomer.last_name
+            lastName: newCustomer.last_name,
+            licenseCode: newCustomer.driver_license || '' // Add the license code here
           });
 
           // Update the newCustomer with the image path
@@ -372,7 +373,6 @@ export function CustomerView() {
         </Typography>
         <Button
           variant="contained"
-          color="inherit"
           startIcon={<Iconify icon="mingcute:add-line" />}
           onClick={handleOpenNewCustomerDialog}
         >

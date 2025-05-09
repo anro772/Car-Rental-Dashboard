@@ -2,6 +2,110 @@
 const express = require('express');
 const router = express.Router();
 
+// *** IMPORTANT: Route order matters in Express! ***
+// Make sure specific routes come before parameterized routes
+
+// GET available cars
+router.get('/status/available', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            "SELECT * FROM cars WHERE status = 'available'"
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET pending cars (new route)
+router.get('/status/pending', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            "SELECT * FROM cars WHERE status = 'pending'"
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET rented cars (new route)
+router.get('/status/rented', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            "SELECT * FROM cars WHERE status = 'rented'"
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET maintenance cars (new route)
+router.get('/status/maintenance', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            "SELECT * FROM cars WHERE status = 'maintenance'"
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET cars by category
+router.get('/category/:category', async (req, res) => {
+    try {
+        const [rows] = await req.app.locals.db.query(
+            'SELECT * FROM cars WHERE category = ?',
+            [req.params.category]
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// NEW: Direct endpoint to update car status
+router.patch('/:id/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+
+        // Validate status
+        const validStatuses = ['available', 'rented', 'maintenance', 'pending'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({
+                error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+            });
+        }
+
+        // Check if car exists
+        const [existing] = await req.app.locals.db.query(
+            'SELECT * FROM cars WHERE id = ?',
+            [req.params.id]
+        );
+
+        if (existing.length === 0) {
+            return res.status(404).json({ error: 'Car not found' });
+        }
+
+        // Update the status
+        const [result] = await req.app.locals.db.query(
+            'UPDATE cars SET status = ? WHERE id = ?',
+            [status, req.params.id]
+        );
+
+        res.json({
+            message: `Car status updated to "${status}" successfully`,
+            affected: result.affectedRows,
+            car_id: req.params.id,
+            new_status: status
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET all cars
 router.get('/', async (req, res) => {
     try {
@@ -25,18 +129,6 @@ router.get('/:id', async (req, res) => {
         }
 
         res.json(rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET available cars
-router.get('/status/available', async (req, res) => {
-    try {
-        const [rows] = await req.app.locals.db.query(
-            "SELECT * FROM cars WHERE status = 'available'"
-        );
-        res.json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -74,6 +166,31 @@ router.post('/', async (req, res) => {
             message: 'Car created successfully'
         });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/update-similar-images', async (req, res) => {
+    const { brand, model, year, image_url } = req.body;
+
+    // Validate required fields
+    if (!brand || !model || !year || !image_url) {
+        return res.status(400).json({ error: 'Brand, model, year, and image_url are required' });
+    }
+
+    try {
+        // Update all cars with the same brand, model, and year
+        const [result] = await req.app.locals.db.query(
+            'UPDATE cars SET image_url = ? WHERE brand = ? AND model = ? AND year = ?',
+            [image_url, brand, model, year]
+        );
+
+        res.json({
+            message: `Successfully updated image for ${result.affectedRows} cars`,
+            affected: result.affectedRows
+        });
+    } catch (error) {
+        console.error('Error updating similar cars:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -218,19 +335,6 @@ router.delete('/:id', async (req, res) => {
             message: 'Car deleted successfully',
             affected: result.affectedRows
         });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET cars by category
-router.get('/category/:category', async (req, res) => {
-    try {
-        const [rows] = await req.app.locals.db.query(
-            'SELECT * FROM cars WHERE category = ?',
-            [req.params.category]
-        );
-        res.json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

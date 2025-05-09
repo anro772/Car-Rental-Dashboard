@@ -24,17 +24,23 @@ const formatDateRo = (dateString: string): string => {
 
 // Function to replace Romanian diacritics with standard ASCII characters
 const removeDiacritics = (text: string): string => {
+    if (!text) return '';
+
     return text
         .replace(/ă/g, 'a')
         .replace(/â/g, 'a')
         .replace(/î/g, 'i')
         .replace(/ș/g, 's')
+        .replace(/ş/g, 's') // handle both forms of ș
         .replace(/ț/g, 't')
+        .replace(/ţ/g, 't') // handle both forms of ț
         .replace(/Ă/g, 'A')
         .replace(/Â/g, 'A')
         .replace(/Î/g, 'I')
         .replace(/Ș/g, 'S')
-        .replace(/Ț/g, 'T');
+        .replace(/Ş/g, 'S')
+        .replace(/Ț/g, 'T')
+        .replace(/Ţ/g, 'T');
 };
 
 // Calculate number of days between two dates
@@ -64,8 +70,18 @@ export const generateInvoice = async (customer: Customer, rental: RentalExtended
 
         // Calculate rental details
         const emissionDate = removeDiacritics(formatDateRo(rental.end_date));
-        const customerName = `${customer.first_name} ${customer.last_name}`;
-        const carName = `${rental.brand} ${rental.model} (${rental.license_plate})`;
+
+        // Customer full name - apply removeDiacritics to avoid encoding issues
+        const customerFirstName = removeDiacritics(customer.first_name || '');
+        const customerLastName = removeDiacritics(customer.last_name || '');
+        const customerName = `${customerFirstName} ${customerLastName}`;
+
+        // Handle car details with removeDiacritics 
+        const carBrand = removeDiacritics(rental.brand || '');
+        const carModel = removeDiacritics(rental.model || '');
+        const licensePlate = removeDiacritics(rental.license_plate || '');
+        const carName = `${carBrand} ${carModel} (${licensePlate})`;
+
         const rentalDays = calculateDays(rental.start_date, rental.end_date);
 
         // Ensure total_cost is a number
@@ -183,7 +199,11 @@ export const downloadInvoice = async (customer: Customer, rental: RentalExtended
         // Create a link element
         const link = document.createElement('a');
         link.href = url;
-        link.download = `factura_${customer.last_name}_${customer.first_name}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+        // Use removeDiacritics for the filename as well
+        const safeFirstName = removeDiacritics(customer.first_name || '');
+        const safeLastName = removeDiacritics(customer.last_name || '');
+        link.download = `factura_${safeLastName}_${safeFirstName}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
         // Append the link to the document, click it, and remove it
         document.body.appendChild(link);

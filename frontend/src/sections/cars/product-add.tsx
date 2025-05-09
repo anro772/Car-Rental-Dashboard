@@ -160,43 +160,75 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
             setLoading(true);
             setError('');
 
+            // Make a copy of the formData that we'll update
+            let updatedFormData = { ...formData };
+
             // If there's a file to upload, upload it first
             if (fileInputRef.current?.files?.length) {
                 const file = fileInputRef.current.files[0];
-                const formDataForUpload = new FormData();
-                formDataForUpload.append('image', file);
-                formDataForUpload.append('brand', formData.brand);
-                formDataForUpload.append('model', formData.model);
 
                 try {
-                    const response = await axios.post(`${API_URL}/upload`, formDataForUpload);
+                    // Use the uploadCarImage method
+                    const filePath = await carsService.uploadCarImage(file, {
+                        brand: formData.brand,
+                        model: formData.model,
+                        year: formData.year,
+                        color: formData.color
+                    });
 
-                    // Update the image_url field with the path returned from the server
-                    if (response.data && response.data.filePath) {
-                        setFormData(prev => ({
-                            ...prev,
-                            image_url: response.data.filePath
-                        }));
-                    }
+                    // Update the formData copy with the path returned from the server
+                    updatedFormData = {
+                        ...updatedFormData,
+                        image_url: filePath
+                    };
+
+                    console.log('Uploaded image path:', filePath);
                 } catch (uploadError) {
                     console.error('Image upload failed:', uploadError);
                     setError('Failed to upload image. Will continue with default image path.');
-                    // Continue with car creation even if image upload fails
-                }
-            }
 
-            // If we have an image preview but no image_url, generate a default path
-            if (imagePreview && !formData.image_url) {
+                    // If upload fails, generate a consistent path that matches our naming convention
+                    const safeBrand = formData.brand.replace(/\s+/g, '-').toLowerCase();
+                    const safeModel = formData.model.replace(/\s+/g, '-').toLowerCase();
+                    const safeColor = formData.color ? formData.color.replace(/\s+/g, '-').toLowerCase() : '';
+
+                    let defaultPath;
+                    if (safeColor) {
+                        defaultPath = `src/assets/cars/${safeBrand}-${safeModel}-${formData.year}-${safeColor}.jpeg`;
+                    } else {
+                        defaultPath = `src/assets/cars/${safeBrand}-${safeModel}-${formData.year}.jpeg`;
+                    }
+
+                    updatedFormData = {
+                        ...updatedFormData,
+                        image_url: defaultPath
+                    };
+
+                    console.log('Using default image path:', defaultPath);
+                }
+            } else if (imagePreview && !formData.image_url) {
+                // If we have an image preview but no image_url, generate a path with the same naming convention
                 const safeBrand = formData.brand.replace(/\s+/g, '-').toLowerCase();
                 const safeModel = formData.model.replace(/\s+/g, '-').toLowerCase();
-                setFormData(prev => ({
-                    ...prev,
-                    image_url: `src/assets/cars/${safeBrand}-${safeModel}.jpeg`
-                }));
+                const safeColor = formData.color ? formData.color.replace(/\s+/g, '-').toLowerCase() : '';
+
+                let defaultPath;
+                if (safeColor) {
+                    defaultPath = `src/assets/cars/${safeBrand}-${safeModel}-${formData.year}-${safeColor}.jpeg`;
+                } else {
+                    defaultPath = `src/assets/cars/${safeBrand}-${safeModel}-${formData.year}.jpeg`;
+                }
+
+                updatedFormData = {
+                    ...updatedFormData,
+                    image_url: defaultPath
+                };
+
+                console.log('Using generated image path:', defaultPath);
             }
 
-            // Submit the car data
-            await carsService.createCar(formData);
+            // Submit the car data with the updated image_url
+            await carsService.createCar(updatedFormData);
 
             onSave();
             onClose();
@@ -400,7 +432,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                                 )}
                             </Paper>
 
-                            <TextField
+                            {/* <TextField
                                 name="image_url"
                                 label="Image Path"
                                 value={formData.image_url || ''}
@@ -409,7 +441,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                                 sx={{ mb: 2 }}
                                 placeholder="src/assets/cars/your-filename.jpg"
                                 helperText="Path where the image should be saved"
-                            />
+                            /> */}
                         </Grid>
 
                         <Grid item xs={12}>

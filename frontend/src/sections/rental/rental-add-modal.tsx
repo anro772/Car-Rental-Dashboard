@@ -1,3 +1,4 @@
+// Import section remains the same
 import { useState, useEffect } from 'react';
 
 import Dialog from '@mui/material/Dialog';
@@ -28,9 +29,7 @@ import rentalsService, { NewRental } from 'src/services/rentalsService';
 import carsService, { Car } from 'src/services/carsService';
 import customersService, { Customer } from 'src/services/customersService';
 
-// ----------------------------------------------------------------------
-
-// Helper function to get color hex (optional, but good for consistency)
+// Helper functions remain the same
 const getColorHex = (colorName: string | undefined): string => {
     const colorMap: Record<string, string> = {
         'Red': '#FF0000', 'Black': '#000000', 'White': '#FFFFFF',
@@ -41,7 +40,6 @@ const getColorHex = (colorName: string | undefined): string => {
     return colorMap[colorName.trim()] || '#808080'; // Default to Gray if not found
 };
 
-// Helper to get car status chip props
 const getCarStatusChip = (status: string) => {
     switch (status) {
         case 'available':
@@ -62,6 +60,12 @@ const getCarStatusChip = (status: string) => {
                 color: 'warning' as const,
                 icon: 'eva:tools-fill'
             };
+        case 'pending':
+            return {
+                label: 'Pending',
+                color: 'warning' as const,
+                icon: 'eva:clock-fill'
+            };
         default:
             return {
                 label: status,
@@ -79,33 +83,29 @@ type RentalAddModalProps = {
 };
 
 export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: RentalAddModalProps) {
-    // Loading and error states
+    // All the state variables remain the same
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
-    // Available data for dropdowns
     const [allCars, setAllCars] = useState<Car[]>([]);
     const [availableCars, setAvailableCars] = useState<Car[]>([]);
     const [unavailableCars, setUnavailableCars] = useState<Car[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
 
-    // Track if a customer has a verified license
     const [customerCanRent, setCustomerCanRent] = useState<boolean>(true);
 
-    // Form data
     const [rentalData, setRentalData] = useState<Partial<NewRental>>({
         status: 'pending',
         payment_status: 'unpaid',
         customer_id: customerId || undefined
     });
 
-    // Calculate fields
     const [selectedCar, setSelectedCar] = useState<Car | null>(null);
     const [calculatedTotal, setCalculatedTotal] = useState<number>(0);
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-    // Reset form when opening modal
+    // Reset form when opening modal - remains the same
     useEffect(() => {
         if (open) {
             const today = new Date();
@@ -123,7 +123,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     }, [open, customerId]);
 
-    // Load cars and customers
+    // Load cars and customers - remains the same
     const fetchCarsAndCustomers = async () => {
         try {
             setLoading(true);
@@ -164,7 +164,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     };
 
-    // Update selected car when car_id changes
+    // Update selected car when car_id changes - remains the same
     useEffect(() => {
         if (rentalData.car_id) {
             const car = allCars.find(c => c.id === rentalData.car_id);
@@ -174,7 +174,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     }, [rentalData.car_id, allCars]);
 
-    // Check if selected customer has a verified license
+    // Check if selected customer has a verified license - remains the same
     useEffect(() => {
         if (rentalData.customer_id) {
             const customer = customers.find(c => c.id === rentalData.customer_id);
@@ -190,7 +190,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     }, [rentalData.customer_id, customers]);
 
-    // Calculate total cost when dates or car changes
+    // Calculate total cost when dates or car changes - remains the same
     useEffect(() => {
         if (selectedCar && rentalData.start_date && rentalData.end_date) {
             try {
@@ -223,7 +223,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     }, [selectedCar, rentalData.start_date, rentalData.end_date]);
 
-    // Input change handlers
+    // Input change handlers - remain the same
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setRentalData(prev => ({ ...prev, [name]: value }));
@@ -238,7 +238,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     };
 
-    // Validation
+    // Validation - remains the same
     const validateForm = (): boolean => {
         const errors: Record<string, string> = {};
         if (!rentalData.car_id) errors.car_id = 'Car is required';
@@ -275,7 +275,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         return Object.keys(errors).length === 0;
     };
 
-    // Submission
+    // UPDATED Submission function to also update car status
     const handleSubmit = async () => {
         if (!validateForm()) return;
 
@@ -299,7 +299,24 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
 
         try {
             setSubmitting(true);
-            await rentalsService.createRental(rentalData as NewRental);
+
+            // 1. Create the rental
+            const createdRental = await rentalsService.createRental(rentalData as NewRental);
+
+            if (rentalData.car_id) {
+                try {
+                    // Always set car status to rented for both active and pending rentals
+                    const carStatus: 'rented' = 'rented';
+
+                    // Use the direct status update method
+                    await carsService.updateCarStatus(rentalData.car_id, carStatus);
+                    console.log(`Updated car ${rentalData.car_id} status to ${carStatus} for rental starting on ${rentalData.start_date}`);
+                } catch (carUpdateError) {
+                    console.error('Failed to update car status:', carUpdateError);
+                    // Don't fail the whole operation if car update fails - rental is already created
+                }
+            }
+
             onSuccess();
             onClose();
         } catch (err: any) {
@@ -315,7 +332,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     };
 
-    // Render car item for the dropdown
+    // Render car item for the dropdown - remains the same
     const renderCarItem = (car: Car) => {
         const isAvailable = car.status === 'available';
         const statusChip = getCarStatusChip(car.status ?? 'unknown');
@@ -359,6 +376,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         );
     };
 
+    // The rest of the component (return statement) remains the same
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>

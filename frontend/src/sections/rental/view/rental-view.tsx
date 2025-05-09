@@ -338,7 +338,6 @@ export function RentalView() {
 
                 <Button
                     variant="contained"
-                    color="inherit"
                     startIcon={<Iconify icon="mingcute:add-line" />}
                     onClick={() => setOpenRentalModal(true)}
                 >

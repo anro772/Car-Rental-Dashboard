@@ -25,19 +25,33 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TablePagination from '@mui/material/TablePagination';
+import TableFooter from '@mui/material/TableFooter';
+import Chip from '@mui/material/Chip';
 import dayjs, { Dayjs } from 'dayjs';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import { fCurrency } from 'src/utils/format-number';
+import { fDate } from 'src/utils/format-time';
 import { useRouter } from 'src/routes/hooks';
 
 import carsService from 'src/services/carsService';
-import rentalsService from 'src/services/rentalsService';
-import customersService from 'src/services/customersService';
+import rentalsService, { RentalExtended } from 'src/services/rentalsService';
+import customersService, { Customer } from 'src/services/customersService';
+import contractService from 'src/services/contractService';
+import invoiceService from 'src/services/invoiceService';
 import { generateReport } from 'src/services/reportService';
 
 import { Iconify } from 'src/components/iconify';
-import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
 
 // ----------------------------------------------------------------------
 
@@ -81,6 +95,22 @@ export function OverviewAnalyticsView() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const [reportType, setReportType] = useState<ReportType>('daily');
+
+  // Data states
+  const [allRentals, setAllRentals] = useState<RentalExtended[]>([]);
+  const [contractRentals, setContractRentals] = useState<RentalExtended[]>([]);
+  const [invoiceRentals, setInvoiceRentals] = useState<RentalExtended[]>([]);
+  const [customers, setCustomers] = useState<{ [key: number]: Customer }>({});
+
+  // Search state
+  const [contractSearchTerm, setContractSearchTerm] = useState('');
+  const [invoiceSearchTerm, setInvoiceSearchTerm] = useState('');
+
+  // Pagination states
+  const [contractPage, setContractPage] = useState(0);
+  const [invoicePage, setInvoicePage] = useState(0);
+  const [rowsPerPage] = useState(10);
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -124,6 +154,36 @@ export function OverviewAnalyticsView() {
           fleetUtilization
         });
 
+        // Fetch all rentals
+        const rentals = await rentalsService.getAllRentals();
+        setAllRentals(rentals);
+
+        // Separate rentals for contracts (active & pending)
+        const contractRentals = rentals
+          .filter(rental => rental.status === 'active' || rental.status === 'pending')
+          .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+        setContractRentals(contractRentals);
+
+        // Separate rentals for invoices (completed)
+        const invoiceRentals = rentals
+          .filter(rental => rental.status === 'completed')
+          .sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime());
+        setInvoiceRentals(invoiceRentals);
+
+        // Fetch customers for the rentals
+        const customerIds = new Set(rentals.map(r => r.customer_id));
+        const customersMap: { [key: number]: Customer } = {};
+
+        for (const id of customerIds) {
+          try {
+            const customer = await customersService.getCustomer(id);
+            customersMap[id] = customer;
+          } catch (err) {
+            console.error(`Failed to fetch customer ${id}:`, err);
+          }
+        }
+
+        setCustomers(customersMap);
         setError('');
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -207,12 +267,136 @@ export function OverviewAnalyticsView() {
     }
   };
 
+  const handleContractPageChange = (event: unknown, newPage: number) => {
+    setContractPage(newPage);
+  };
+
+  const handleInvoicePageChange = (event: unknown, newPage: number) => {
+    setInvoicePage(newPage);
+  };
+
+  const handleContractSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setContractSearchTerm(event.target.value);
+    setContractPage(0); // Reset to first page when search changes
+  };
+
+  const handleInvoiceSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInvoiceSearchTerm(event.target.value);
+    setInvoicePage(0); // Reset to first page when search changes
+  };
+
+  const handleClearContractSearch = () => {
+    setContractSearchTerm('');
+    setContractPage(0);
+  };
+
+  const handleClearInvoiceSearch = () => {
+    setInvoiceSearchTerm('');
+    setInvoicePage(0);
+  };
+
+  const handleDownloadContract = async (rental: RentalExtended) => {
+    try {
+      const customer = customers[rental.customer_id];
+      if (!customer) {
+        throw new Error('Customer data not found');
+      }
+
+      await contractService.downloadContract(customer, rental);
+
+      setSnackbar({
+        open: true,
+        message: 'Contractul a fost descărcat cu succes!',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('Failed to download contract:', err);
+      setSnackbar({
+        open: true,
+        message: 'Nu s-a putut descărca contractul. Încercați din nou mai târziu.',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDownloadInvoice = async (rental: RentalExtended) => {
+    try {
+      const customer = customers[rental.customer_id];
+      if (!customer) {
+        throw new Error('Customer data not found');
+      }
+
+      await invoiceService.downloadInvoice(customer, rental);
+
+      setSnackbar({
+        open: true,
+        message: 'Factura a fost descărcată cu succes!',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('Failed to download invoice:', err);
+      setSnackbar({
+        open: true,
+        message: 'Nu s-a putut descărca factura. Încercați din nou mai târziu.',
+        severity: 'error'
+      });
+    }
+  };
+
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({
       ...prev,
       open: false
     }));
   };
+
+  // Filter contracts based on search term
+  const filteredContracts = contractRentals.filter(rental => {
+    if (!contractSearchTerm.trim()) return true;
+
+    const searchTermLower = contractSearchTerm.toLowerCase();
+
+    // Search in customer name
+    const customer = customers[rental.customer_id];
+    const customerName = customer
+      ? `${customer.first_name} ${customer.last_name}`.toLowerCase()
+      : (rental.customer_name || '').toLowerCase();
+
+    // Search in car details
+    const carDetails = `${rental.brand} ${rental.model} ${rental.license_plate || ''}`.toLowerCase();
+
+    return customerName.includes(searchTermLower) || carDetails.includes(searchTermLower);
+  });
+
+  // Filter invoices based on search term
+  const filteredInvoices = invoiceRentals.filter(rental => {
+    if (!invoiceSearchTerm.trim()) return true;
+
+    const searchTermLower = invoiceSearchTerm.toLowerCase();
+
+    // Search in customer name
+    const customer = customers[rental.customer_id];
+    const customerName = customer
+      ? `${customer.first_name} ${customer.last_name}`.toLowerCase()
+      : (rental.customer_name || '').toLowerCase();
+
+    // Search in car details
+    const carDetails = `${rental.brand} ${rental.model} ${rental.license_plate || ''}`.toLowerCase();
+
+    return customerName.includes(searchTermLower) || carDetails.includes(searchTermLower);
+  });
+
+  // Calculate displayed contracts based on pagination and filter
+  const displayedContracts = filteredContracts.slice(
+    contractPage * rowsPerPage,
+    contractPage * rowsPerPage + rowsPerPage
+  );
+
+  // Calculate displayed invoices based on pagination and filter
+  const displayedInvoices = filteredInvoices.slice(
+    invoicePage * rowsPerPage,
+    invoicePage * rowsPerPage + rowsPerPage
+  );
 
   if (loading) {
     return (
@@ -233,126 +417,89 @@ export function OverviewAnalyticsView() {
   }
 
   return (
-    <DashboardContent maxWidth="xl">
-      <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: { xs: 3, md: 5 } }}>
-        <Typography variant="h4">
+    <DashboardContent>
+      <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 500 }}>
           Car Rental Dashboard
         </Typography>
         <Button
           variant="contained"
-          color="primary"
           startIcon={<Iconify icon="mdi:file-document-outline" />}
           onClick={handleOpenReportDialog}
           disabled={generatingReport}
         >
-          {generatingReport ? 'Se generează...' : 'Obtinere Rapoarte Zilnice'}
+          {generatingReport ? 'Se generează...' : 'Obținere Rapoarte Zilnice'}
         </Button>
       </Box>
 
       <Grid container spacing={3}>
-        {/* Fleet Overview */}
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Total Fleet"
-            total={dashboardData.totalCars}
-            percent={0}
-            hiddenPercent={true} // Hide percent display
-            color="info"
-            icon={<img alt="icon" src="/assets/icons/navbar/ic-car.svg" />}
-            chart={{
-              series: [dashboardData.availableCars, dashboardData.rentedCars, dashboardData.maintenanceCars],
-              categories: ['Available', 'Rented', 'Maintenance'],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Available Cars"
-            total={dashboardData.availableCars}
-            percent={0}
-            hiddenPercent={true}
-            color="success"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-message.svg" />}
-            chart={{
-              series: [dashboardData.availableCars],
-              categories: ['Available'],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Rented Cars"
-            total={dashboardData.rentedCars}
-            percent={0}
-            hiddenPercent={true}
-            color="warning"
-            icon={<img alt="icon" src="/assets/icons/navbar/ic-rental.svg" />}
-            chart={{
-              series: [dashboardData.rentedCars],
-              categories: ['Rented'],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Maintenance"
-            total={dashboardData.maintenanceCars}
-            percent={0}
-            hiddenPercent={true}
-            color="error"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-buy.svg" />}
-            chart={{
-              series: [dashboardData.maintenanceCars],
-              categories: ['Maintenance'],
-            }}
-          />
-        </Grid>
-
-        {/* Fleet Utilization - Custom Card with Progress Bars */}
+        {/* Fleet Utilization Section */}
         <Grid xs={12} md={6}>
-          <Card>
-            <CardHeader title="Fleet Utilization" />
-            <CardContent>
+          <Card sx={{
+            borderRadius: 2,
+            boxShadow: '0 0 10px rgba(0,0,0,0.08)',
+            height: '100%'
+          }}>
+            <CardHeader
+              title={<Typography variant="h6">Utilizare Flotă</Typography>}
+              sx={{ pb: 0, pt: 2.5, px: 3 }}
+            />
+            <CardContent sx={{ pt: 2, px: 3 }}>
               <Stack spacing={3}>
                 <Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle2">Available</Typography>
-                    <Typography variant="subtitle2">{dashboardData.fleetUtilization.available.toFixed(1)}%</Typography>
+                    <Typography variant="body2">Disponibile</Typography>
+                    <Typography variant="body2" fontWeight="500">{dashboardData.fleetUtilization.available.toFixed(1)}%</Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
                     value={dashboardData.fleetUtilization.available}
-                    color="success"
-                    sx={{ height: 10, borderRadius: 1 }}
+                    sx={{
+                      height: 8,
+                      borderRadius: 1,
+                      bgcolor: 'rgba(84, 214, 44, 0.16)',
+                      '.MuiLinearProgress-bar': {
+                        bgcolor: 'rgb(84, 214, 44)',
+                      }
+                    }}
                   />
                 </Box>
 
                 <Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle2">Rented</Typography>
-                    <Typography variant="subtitle2">{dashboardData.fleetUtilization.rented.toFixed(1)}%</Typography>
+                    <Typography variant="body2">Închiriate</Typography>
+                    <Typography variant="body2" fontWeight="500">{dashboardData.fleetUtilization.rented.toFixed(1)}%</Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
                     value={dashboardData.fleetUtilization.rented}
-                    color="warning"
-                    sx={{ height: 10, borderRadius: 1 }}
+                    sx={{
+                      height: 8,
+                      borderRadius: 1,
+                      bgcolor: 'rgba(255, 171, 0, 0.16)',
+                      '.MuiLinearProgress-bar': {
+                        bgcolor: 'rgb(255, 171, 0)',
+                      }
+                    }}
                   />
                 </Box>
 
                 <Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle2">Maintenance</Typography>
-                    <Typography variant="subtitle2">{dashboardData.fleetUtilization.maintenance.toFixed(1)}%</Typography>
+                    <Typography variant="body2">În Mentenanță</Typography>
+                    <Typography variant="body2" fontWeight="500">{dashboardData.fleetUtilization.maintenance.toFixed(1)}%</Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
                     value={dashboardData.fleetUtilization.maintenance}
-                    color="error"
-                    sx={{ height: 10, borderRadius: 1 }}
+                    sx={{
+                      height: 8,
+                      borderRadius: 1,
+                      bgcolor: 'rgba(255, 86, 48, 0.16)',
+                      '.MuiLinearProgress-bar': {
+                        bgcolor: 'rgb(255, 86, 48)',
+                      }
+                    }}
                   />
                 </Box>
               </Stack>
@@ -360,28 +507,264 @@ export function OverviewAnalyticsView() {
           </Card>
         </Grid>
 
-        {/* Overdue Rentals */}
+        {/* Overdue Rentals Section */}
         <Grid xs={12} md={6}>
-          <Card>
-            <CardHeader title="Overdue Rentals" />
-            <CardContent>
+          <Card sx={{
+            borderRadius: 2,
+            boxShadow: '0 0 10px rgba(0,0,0,0.08)',
+            height: '100%'
+          }}>
+            <CardHeader
+              title={<Typography variant="h6">Închirieri Depășite</Typography>}
+              sx={{ pb: 0, pt: 2.5, px: 3 }}
+            />
+            <CardContent sx={{ pt: 2, px: 3 }}>
               {dashboardData.overdueRentals === 0 ? (
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  No overdue rentals at this time.
+                  Nu există închirieri depășite în acest moment.
                 </Typography>
               ) : (
-                <>
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    {dashboardData.overdueRentals} rental(s) are currently overdue.
-                  </Alert>
+                <Box>
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    mb: 2,
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: 'rgba(255, 171, 0, 0.08)',
+                    border: '1px solid rgba(255, 171, 0, 0.24)'
+                  }}>
+                    <Iconify icon="eva:alert-triangle-fill" color="warning.main" width={24} height={24} />
+                    <Typography variant="body2" sx={{ ml: 1, color: 'warning.dark' }}>
+                      {dashboardData.overdueRentals} închiriere(i) sunt în prezent depășite.
+                    </Typography>
+                  </Box>
                   <Button
                     variant="contained"
                     color="warning"
                     startIcon={<Iconify icon="eva:alert-triangle-fill" />}
                     onClick={handleViewOverdueRentals}
                   >
-                    View Overdue Rentals
+                    Vizualizare Închirieri Depășite
                   </Button>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Contracts Section */}
+        <Grid xs={12}>
+          <Card sx={{
+            borderRadius: 2,
+            boxShadow: '0 0 10px rgba(0,0,0,0.08)'
+          }}>
+            <CardHeader
+              title={<Typography variant="h6">Contracte</Typography>}
+              sx={{ pb: 1, pt: 2.5, px: 3 }}
+            />
+            <CardContent sx={{ pt: 1, px: 3, pb: 0 }}>
+              {/* Search Box for Contracts */}
+              <TextField
+                fullWidth
+                placeholder="Căutare după nume client, marcă, model sau număr de înmatriculare..."
+                value={contractSearchTerm}
+                onChange={handleContractSearchChange}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Iconify icon="eva:search-fill" width={20} height={20} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: contractSearchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleClearContractSearch} edge="end">
+                        <Iconify icon="eva:close-fill" width={20} height={20} />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </CardContent>
+            <CardContent sx={{ pt: 0, px: 0 }}>
+              {filteredContracts.length === 0 ? (
+                <Typography variant="body2" sx={{ px: 3, color: 'text.secondary', py: 2 }}>
+                  {contractRentals.length === 0
+                    ? "Nu există contracte de afișat."
+                    : "Nu s-au găsit contracte care să corespundă căutării."}
+                </Typography>
+              ) : (
+                <>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead sx={{ bgcolor: 'background.neutral' }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5, pl: 3 }}>Numele Clientului</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Mașină</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Nr. Înmatriculare</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Dată început</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Dată sfârșit</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Status</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Valoare</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5, pr: 3 }}>Acțiuni</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {displayedContracts.map((rental) => {
+                          const customer = customers[rental.customer_id];
+                          const customerName = customer
+                            ? `${customer.first_name} ${customer.last_name}`
+                            : rental.customer_name || 'Client necunoscut';
+
+                          return (
+                            <TableRow key={rental.id} hover>
+                              <TableCell sx={{ pl: 3 }}>{customerName}</TableCell>
+                              <TableCell>{`${rental.brand} ${rental.model}`}</TableCell>
+                              <TableCell>{rental.license_plate}</TableCell>
+                              <TableCell>{fDate(rental.start_date)}</TableCell>
+                              <TableCell>{fDate(rental.end_date)}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={rental.status}
+                                  color={rental.status === 'active' ? 'success' : 'warning'}
+                                  size="small"
+                                />
+                              </TableCell>
+                              <TableCell>{fCurrency(rental.total_cost)}</TableCell>
+                              <TableCell sx={{ pr: 3 }}>
+                                <Button
+                                  size="small"
+                                  startIcon={<Iconify icon="mdi:file-document-outline" width={16} />}
+                                  onClick={() => handleDownloadContract(rental)}
+                                >
+                                  Contract
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  <TablePagination
+                    component="div"
+                    count={filteredContracts.length}
+                    page={contractPage}
+                    onPageChange={handleContractPageChange}
+                    rowsPerPage={rowsPerPage}
+                    rowsPerPageOptions={[10]}
+                    sx={{ px: 3 }}
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Invoices Section */}
+        <Grid xs={12}>
+          <Card sx={{
+            borderRadius: 2,
+            boxShadow: '0 0 10px rgba(0,0,0,0.08)'
+          }}>
+            <CardHeader
+              title={<Typography variant="h6">Facturi</Typography>}
+              sx={{ pb: 1, pt: 2.5, px: 3 }}
+            />
+            <CardContent sx={{ pt: 1, px: 3, pb: 0 }}>
+              {/* Search Box for Invoices */}
+              <TextField
+                fullWidth
+                placeholder="Căutare după nume client, marcă, model sau număr de înmatriculare..."
+                value={invoiceSearchTerm}
+                onChange={handleInvoiceSearchChange}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Iconify icon="eva:search-fill" width={20} height={20} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: invoiceSearchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleClearInvoiceSearch} edge="end">
+                        <Iconify icon="eva:close-fill" width={20} height={20} />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </CardContent>
+            <CardContent sx={{ pt: 0, px: 0 }}>
+              {filteredInvoices.length === 0 ? (
+                <Typography variant="body2" sx={{ px: 3, color: 'text.secondary', py: 2 }}>
+                  {invoiceRentals.length === 0
+                    ? "Nu există facturi de afișat."
+                    : "Nu s-au găsit facturi care să corespundă căutării."}
+                </Typography>
+              ) : (
+                <>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead sx={{ bgcolor: 'background.neutral' }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5, pl: 3 }}>Numele Clientului</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Mașină</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Nr. Înmatriculare</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Dată început</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Dată sfârșit</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Plată</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Valoare</TableCell>
+                          <TableCell sx={{ fontWeight: 600, py: 1.5, pr: 3 }}>Acțiuni</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {displayedInvoices.map((rental) => {
+                          const customer = customers[rental.customer_id];
+                          const customerName = customer
+                            ? `${customer.first_name} ${customer.last_name}`
+                            : rental.customer_name || 'Client necunoscut';
+
+                          return (
+                            <TableRow key={rental.id} hover>
+                              <TableCell sx={{ pl: 3 }}>{customerName}</TableCell>
+                              <TableCell>{`${rental.brand} ${rental.model}`}</TableCell>
+                              <TableCell>{rental.license_plate}</TableCell>
+                              <TableCell>{fDate(rental.start_date)}</TableCell>
+                              <TableCell>{fDate(rental.end_date)}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={rental.payment_status}
+                                  color={rental.payment_status === 'paid' ? 'success' : 'warning'}
+                                  size="small"
+                                />
+                              </TableCell>
+                              <TableCell>{fCurrency(rental.total_cost)}</TableCell>
+                              <TableCell sx={{ pr: 3 }}>
+                                <Button
+                                  size="small"
+                                  startIcon={<Iconify icon="mdi:receipt" width={16} />}
+                                  onClick={() => handleDownloadInvoice(rental)}
+                                >
+                                  Factură
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  <TablePagination
+                    component="div"
+                    count={filteredInvoices.length}
+                    page={invoicePage}
+                    onPageChange={handleInvoicePageChange}
+                    rowsPerPage={rowsPerPage}
+                    rowsPerPageOptions={[10]}
+                    sx={{ px: 3 }}
+                  />
                 </>
               )}
             </CardContent>

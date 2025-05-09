@@ -29,6 +29,13 @@ export type NewCustomer = Omit<Customer, 'id' | 'created_at'>;
 // Type for updating a customer
 export type UpdateCustomer = Partial<NewCustomer>;
 
+// Interface for license upload info
+export interface CustomerLicenseInfo {
+    firstName: string;
+    lastName: string;
+    licenseCode?: string;
+}
+
 const customersService = {
     // Get all customers
     getAllCustomers: async (): Promise<Customer[]> => {
@@ -179,17 +186,21 @@ const customersService = {
     },
 
     // Helper to upload license image
-    uploadLicenseImage: async (imageFile: File, customerName?: { firstName: string, lastName: string }): Promise<string> => {
+    uploadLicenseImage: async (imageFile: File, customerInfo?: CustomerLicenseInfo): Promise<string> => {
         const formData = new FormData();
         formData.append('image', imageFile);
 
-        if (customerName) {
-            formData.append('first_name', customerName.firstName);
-            formData.append('last_name', customerName.lastName);
+        // Instead of using form fields, use query parameters
+        let url = `${API_URL}/upload?type=license`;
+        if (customerInfo) {
+            url += `&first_name=${encodeURIComponent(customerInfo.firstName || '')}`;
+            url += `&last_name=${encodeURIComponent(customerInfo.lastName || '')}`;
+            url += `&license_code=${encodeURIComponent(customerInfo.licenseCode || '')}`;
         }
 
         try {
-            const response = await axios.post(`${API_URL}/upload?type=license`, formData, {
+            console.log('Sending license upload to URL:', url);
+            const response = await axios.post(url, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }

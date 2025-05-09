@@ -30,6 +30,7 @@ interface GroupedCarProductData {
   availableCount: number;
   rentedCount: number;
   maintenanceCount: number;
+  pendingCount: number; // Add support for pending cars count
   representativeCarId: number;
   individualCars: any[]; // Use 'any' or import 'Car' type if needed here
 }
@@ -77,29 +78,44 @@ export function ProductItem({ product, onClick, mode = 'individual' }: ProductIt
   };
 
   // --- Render Status Label ---
-  // For groups, show total count or availability. For individuals, show status.
+  // For groups, show total count or availability. For individuals, show actual status.
   const renderStatus = () => {
-    let labelText = product.status;
+    let labelText;
     let labelColor: "info" | "success" | "warning" | "error" = 'info';
 
     if (mode === 'group' && product.groupData) {
+      // For group mode, show total count
       labelText = `${product.groupData.totalCount} Total`;
+
+      // Set color based on availability
       if (product.groupData.availableCount > 0) {
         labelColor = 'success';
       } else if (product.groupData.totalCount > 0) {
-        labelColor = 'warning'; // Or 'error' if all are rented/maintenance
+        labelColor = 'warning';
       }
     } else if (mode === 'individual') {
-      // Existing logic for individual car status color
-      if (product.status === 'available') labelColor = 'success';
-      else if (product.status === 'rented') labelColor = 'error';
-      else if (product.status === 'maintenance') labelColor = 'warning';
-    }
+      // For individual cars, always show the actual status text (rented, pending, maintenance, etc.)
+      labelText = product.status;
 
+      // Set color based on status
+      if (product.status === 'available') {
+        labelColor = 'success';
+      } else if (product.status === 'rented') {
+        labelColor = 'error';
+      } else if (product.status === 'maintenance') {
+        labelColor = 'warning';
+      } else if (product.status === 'pending') {
+        // Add handling for "pending" status
+        labelColor = 'info';
+      } else {
+        // Default for any other statuses
+        labelColor = 'info';
+      }
+    }
 
     return (
       <Label
-        variant="filled" // Use filled for better visibility
+        variant="filled"
         color={labelColor}
         sx={{
           zIndex: 9,
@@ -156,6 +172,10 @@ export function ProductItem({ product, onClick, mode = 'individual' }: ProductIt
         </Typography>
         <Typography variant="caption" sx={{ color: 'warning.main' }}>
           {product.groupData.maintenanceCount} Maint.
+        </Typography>
+        {/* Add Pending count to the display */}
+        <Typography variant="caption" sx={{ color: 'info.main' }}>
+          {product.groupData.pendingCount || 0} Pending
         </Typography>
       </Stack>
     );

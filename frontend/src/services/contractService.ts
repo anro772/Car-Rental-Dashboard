@@ -24,17 +24,23 @@ const formatDateRo = (dateString: string): string => {
 
 // Function to replace Romanian diacritics with standard ASCII characters
 const removeDiacritics = (text: string): string => {
+    if (!text) return '';
+
     return text
         .replace(/ă/g, 'a')
         .replace(/â/g, 'a')
         .replace(/î/g, 'i')
         .replace(/ș/g, 's')
+        .replace(/ş/g, 's') // handle both forms of ș
         .replace(/ț/g, 't')
+        .replace(/ţ/g, 't') // handle both forms of ț
         .replace(/Ă/g, 'A')
         .replace(/Â/g, 'A')
         .replace(/Î/g, 'I')
         .replace(/Ș/g, 'S')
-        .replace(/Ț/g, 'T');
+        .replace(/Ş/g, 'S')
+        .replace(/Ț/g, 'T')
+        .replace(/Ţ/g, 'T');
 };
 
 // Generate a filled contract for a customer and rental
@@ -58,8 +64,10 @@ export const generateContract = async (customer: Customer, rental?: RentalExtend
             ? removeDiacritics(formatDateRo(rental.start_date))
             : removeDiacritics(formatDateRo(new Date().toISOString()));
 
-        // Customer full name
-        const customerName = `${customer.first_name} ${customer.last_name}`;
+        // Customer full name - apply removeDiacritics to avoid encoding issues
+        const customerFirstName = removeDiacritics(customer.first_name || '');
+        const customerLastName = removeDiacritics(customer.last_name || '');
+        const customerName = `${customerFirstName} ${customerLastName}`;
 
         // FINAL COORDINATE ADJUSTMENTS based on feedback
 
@@ -82,7 +90,7 @@ export const generateContract = async (customer: Customer, rental?: RentalExtend
         });
 
         // Company name (SC/PFA/II/IF)
-        page.drawText('Car Rental Dashboard', {
+        page.drawText('SC AUTO RENT M SRL', {
             x: 150,
             y: 685,
             size: 11,
@@ -168,7 +176,11 @@ export const downloadContract = async (customer: Customer, rental?: RentalExtend
         // Create a link element
         const link = document.createElement('a');
         link.href = url;
-        link.download = `contract_${customer.last_name}_${customer.first_name}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+        // Use removeDiacritics for the filename as well
+        const safeFirstName = removeDiacritics(customer.first_name || '');
+        const safeLastName = removeDiacritics(customer.last_name || '');
+        link.download = `contract_${safeLastName}_${safeFirstName}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
         // Append the link to the document, click it, and remove it
         document.body.appendChild(link);

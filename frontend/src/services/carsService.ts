@@ -13,10 +13,26 @@ export interface Car {
     color?: string;
     category?: string;
     daily_rate: number;
-    status?: 'available' | 'rented' | 'maintenance';
+    status?: 'available' | 'rented' | 'maintenance' | 'pending';
     image_url?: string;
     features?: string;
     created_at?: string;
+}
+
+// Interface for car image upload
+export interface CarImageInfo {
+    brand: string;
+    model: string;
+    year: number;
+    color?: string;
+}
+
+// Interface for updating similar car images
+export interface SimilarCarsUpdateInfo {
+    brand: string;
+    model: string;
+    year: number;
+    imageUrl: string;
 }
 
 // Type for creating a new car
@@ -56,6 +72,39 @@ const carsService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching available cars:', error);
+            throw error;
+        }
+    },
+
+    // Get pending cars
+    getPendingCars: async (): Promise<Car[]> => {
+        try {
+            const response = await axios.get(`${API_URL}/cars/status/pending`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching pending cars:', error);
+            throw error;
+        }
+    },
+
+    // Get rented cars
+    getRentedCars: async (): Promise<Car[]> => {
+        try {
+            const response = await axios.get(`${API_URL}/cars/status/rented`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching rented cars:', error);
+            throw error;
+        }
+    },
+
+    // Get maintenance cars
+    getMaintenanceCars: async (): Promise<Car[]> => {
+        try {
+            const response = await axios.get(`${API_URL}/cars/status/maintenance`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching maintenance cars:', error);
             throw error;
         }
     },
@@ -104,6 +153,19 @@ const carsService = {
         }
     },
 
+    // Direct method to update car status
+    updateCarStatus: async (id: number, status: 'available' | 'rented' | 'maintenance' | 'pending'): Promise<{ message: string; affected: number }> => {
+        try {
+            // Use the new dedicated endpoint for updating status
+            const response = await axios.patch(`${API_URL}/cars/${id}/status`, { status });
+            console.log(`Car ${id} status updated to "${status}" successfully:`, response.data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error updating car ${id} status to "${status}":`, error);
+            throw error;
+        }
+    },
+
     // Delete a car
     deleteCar: async (id: number): Promise<{ message: string; affected: number }> => {
         try {
@@ -111,6 +173,53 @@ const carsService = {
             return response.data;
         } catch (error) {
             console.error(`Error deleting car with ID ${id}:`, error);
+            throw error;
+        }
+    },
+
+    // Upload car image
+    uploadCarImage: async (imageFile: File, carInfo: CarImageInfo): Promise<string> => {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+
+        // Use query parameters instead of form fields
+        let url = `${API_URL}/upload?type=car`;
+        url += `&brand=${encodeURIComponent(carInfo.brand || '')}`;
+        url += `&model=${encodeURIComponent(carInfo.model || '')}`;
+        url += `&year=${encodeURIComponent(carInfo.year.toString())}`;
+        if (carInfo.color) {
+            url += `&color=${encodeURIComponent(carInfo.color)}`;
+        }
+
+        try {
+            console.log('Sending car image upload to URL:', url);
+            const response = await axios.post(url, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            return response.data.filePath;
+        } catch (error) {
+            console.error('Error uploading car image:', error);
+            throw error;
+        }
+    },
+
+    // Update images for all cars with the same brand, model, and year
+    updateSimilarCarsImages: async (info: SimilarCarsUpdateInfo): Promise<{ message: string; affected: number }> => {
+        try {
+            // Make call to update all similar cars
+            const response = await axios.post(`${API_URL}/cars/update-similar-images`, {
+                brand: info.brand,
+                model: info.model,
+                year: info.year,
+                image_url: info.imageUrl
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error(`Error updating similar cars:`, error);
             throw error;
         }
     }

@@ -1,3 +1,4 @@
+//src/user/user-table-row.tsx
 import { useState, useRef, useEffect } from 'react';
 
 import Stack from '@mui/material/Stack';
@@ -227,6 +228,7 @@ export function CustomerTableRow({
     return Object.keys(errors).length === 0;
   };
 
+  // Updated handleUpdateCustomer function
   const handleUpdateCustomer = async () => {
     if (!validateForm()) return;
 
@@ -239,7 +241,8 @@ export function CustomerTableRow({
         try {
           const filePath = await customersService.uploadLicenseImage(file, {
             firstName: editCustomer.first_name || '',
-            lastName: editCustomer.last_name || ''
+            lastName: editCustomer.last_name || '',
+            licenseCode: editCustomer.driver_license || ''
           });
 
           // Update the editCustomer with the image path

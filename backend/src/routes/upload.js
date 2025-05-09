@@ -1,4 +1,4 @@
-// src/routes/upload.js - Updates to handle license images
+// src/routes/upload.js - Corrected filename format for car images
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -27,33 +27,51 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
+        console.log('Upload query params:', req.query);
+
         // Generate filename based on upload type
         if (req.query.type === 'license') {
-            const firstName = req.body.first_name || 'unknown';
-            const lastName = req.body.last_name || 'customer';
-            const timestamp = Date.now();
+            // Handle license file naming
+            const firstName = req.query.first_name || 'unknown';
+            const lastName = req.query.last_name || 'customer';
+            const licenseCode = req.query.license_code || 'nolicense';
             const ext = path.extname(file.originalname);
 
             const safeFirstName = firstName.replace(/\s+/g, '-').toLowerCase();
             const safeLastName = lastName.replace(/\s+/g, '-').toLowerCase();
+            const safeLicenseCode = licenseCode.replace(/\s+/g, '').toUpperCase();
 
-            cb(null, `license-${safeFirstName}-${safeLastName}-${timestamp}${ext}`);
-        } else {
-            // Handle car images as before
-            if (file.originalname.includes('-')) {
-                // Use the original filename
-                cb(null, file.originalname);
+            const filename = `license-${safeFirstName}-${safeLastName}-${safeLicenseCode}${ext}`;
+            console.log('Generated license filename:', filename);
+
+            cb(null, filename);
+        } else if (req.query.type === 'car') {
+            // Handle car file naming with brand-model-year-color.ext format
+            const brand = req.query.brand || 'unknown';
+            const model = req.query.model || 'model';
+            const year = req.query.year || new Date().getFullYear();
+            const color = req.query.color || '';
+            const ext = path.extname(file.originalname);
+
+            const safeBrand = brand.replace(/\s+/g, '-').toLowerCase();
+            const safeModel = model.replace(/\s+/g, '-').toLowerCase();
+            const safeColor = color.replace(/\s+/g, '-').toLowerCase();
+
+            // Create filename with optional color
+            let filename;
+            if (safeColor) {
+                filename = `${safeBrand}-${safeModel}-${year}-${safeColor}${ext}`;
             } else {
-                // Generate filename for car
-                const brand = req.body.brand || 'car';
-                const model = req.body.model || 'model';
-                const ext = path.extname(file.originalname);
-
-                const safeBrand = brand.replace(/\s+/g, '-').toLowerCase();
-                const safeModel = model.replace(/\s+/g, '-').toLowerCase();
-
-                cb(null, `${safeBrand}-${safeModel}${ext}`);
+                filename = `${safeBrand}-${safeModel}-${year}${ext}`;
             }
+
+            console.log('Generated car filename:', filename);
+            cb(null, filename);
+        } else {
+            // Handle other file uploads with timestamp
+            const timestamp = Date.now();
+            const ext = path.extname(file.originalname);
+            cb(null, `upload-${timestamp}${ext}`);
         }
     }
 });
@@ -88,6 +106,8 @@ router.post('/', upload.single('image'), (req, res) => {
         } else {
             relativePath = `src/assets/cars/${req.file.filename}`;
         }
+
+        console.log('Upload successful, returning path:', relativePath);
 
         res.json({
             success: true,

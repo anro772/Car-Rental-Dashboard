@@ -1,5 +1,5 @@
 //src/sections/cars/product-edit.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -15,6 +15,7 @@ import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
 
 import carsService from 'src/services/carsService';
 import { Iconify } from 'src/components/iconify';
@@ -50,6 +51,12 @@ const CAR_COLORS = [
     'Green'
 ];
 
+// Car status options
+const CAR_STATUSES = [
+    { value: 'available', label: 'Functioning' },
+    { value: 'maintenance', label: 'Maintenance' },
+];
+
 export function ProductEdit({
     open,
     onClose,
@@ -62,6 +69,7 @@ export function ProductEdit({
     const [features, setFeatures] = useState(initialFeatures || '');
     const [category, setCategory] = useState('');
     const [color, setColor] = useState('');
+    const [status, setStatus] = useState<'available' | 'rented' | 'maintenance' | 'pending'>('available');
     const [imageUrl, setImageUrl] = useState('');
     const [licensePlate, setLicensePlate] = useState('');
     const [year, setYear] = useState<number | ''>('');
@@ -69,6 +77,10 @@ export function ProductEdit({
     const [fetching, setFetching] = useState(false);
     const [error, setError] = useState('');
     const [previewImage, setPreviewImage] = useState('');
+    const [brand, setBrand] = useState('');  // Added brand state
+    const [model, setModel] = useState('');  // Added model state
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadedImage, setUploadedImage] = useState<File | null>(null);
 
     // Get current year for validation
     const currentYear = new Date().getFullYear();
@@ -80,9 +92,11 @@ export function ProductEdit({
                 try {
                     setFetching(true);
                     const car = await carsService.getCar(carId);
+                    setBrand(car.brand || '');
+                    setModel(car.model || '');
                     setCategory(car.category || '');
                     setColor(car.color || '');
-                    setImageUrl(car.image_url || '');
+                    setStatus(car.status || 'available' as 'available' | 'rented' | 'maintenance' | 'pending'); setImageUrl(car.image_url || '');
                     setLicensePlate(car.license_plate || '');
                     setYear(car.year || '');
                     setPreviewImage(car.image_url || '');
@@ -103,15 +117,55 @@ export function ProductEdit({
             setLoading(true);
             setError('');
 
+            let updatedImageUrl = imageUrl;
+
+            // If there's a file to upload, upload it first
+            if (uploadedImage) {
+                try {
+                    // Upload the image with the car details
+                    const filePath = await carsService.uploadCarImage(uploadedImage, {
+                        brand,
+                        model,
+                        year: typeof year === 'number' ? year : currentYear,
+                        color
+                    });
+
+                    // Update the image URL with the path returned from the server
+                    updatedImageUrl = filePath;
+                    console.log('Uploaded image path:', filePath);
+                } catch (uploadError) {
+                    console.error('Image upload failed:', uploadError);
+                    setError('Failed to upload image. Will continue with existing image.');
+                }
+            }
+
+            // Update the current car
             await carsService.patchCar(carId, {
                 daily_rate: dailyRate,
                 features,
                 category,
                 color,
-                image_url: imageUrl,
+                status,
+                image_url: updatedImageUrl,
                 license_plate: licensePlate,
                 year: typeof year === 'number' ? year : undefined
             });
+
+            // If image URL has changed, update all other cars with the same brand, model, and year
+            if (updatedImageUrl !== imageUrl && updatedImageUrl) {
+                try {
+                    console.log('Updating image for all similar cars');
+                    await carsService.updateSimilarCarsImages({
+                        brand,
+                        model,
+                        year: typeof year === 'number' ? year : currentYear,
+                        imageUrl: updatedImageUrl
+                    });
+                } catch (updateError) {
+                    console.error('Failed to update similar cars:', updateError);
+                    // Continue even if updating similar cars fails
+                }
+            }
 
             onSave();
             onClose();
@@ -139,6 +193,51 @@ export function ProductEdit({
                 setYear(yearValue);
             }
         }
+    };
+
+    // Image handling functions
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Store the file for later upload
+        setUploadedImage(file);
+
+        // Create a preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = e.target?.result as string;
+            setPreviewImage(result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const file = e.dataTransfer.files?.[0];
+        if (!file) return;
+
+        // Store the file for later upload
+        setUploadedImage(file);
+
+        // Create a preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = e.target?.result as string;
+            setPreviewImage(result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleBrowseClick = () => {
+        fileInputRef.current?.click();
     };
 
     // Get color for color indicator
@@ -171,6 +270,30 @@ export function ProductEdit({
                             {/* First column */}
                             <Grid item xs={12} md={7}>
                                 <Grid container spacing={2}>
+                                    {/* Display brand and model (read-only) */}
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            label="Brand"
+                                            value={brand}
+                                            fullWidth
+                                            sx={{ mb: 2 }}
+                                            InputProps={{
+                                                readOnly: true,
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            label="Model"
+                                            value={model}
+                                            fullWidth
+                                            sx={{ mb: 2 }}
+                                            InputProps={{
+                                                readOnly: true,
+                                            }}
+                                        />
+                                    </Grid>
+
                                     {/* License Plate */}
                                     <Grid item xs={12} sm={6}>
                                         <TextField
@@ -278,14 +401,45 @@ export function ProductEdit({
                                     </Select>
                                 </FormControl>
 
+                                {/* Status selection */}
+                                <FormControl fullWidth sx={{ mb: 3 }}>
+                                    <InputLabel id="status-label">Status</InputLabel>
+                                    <Select
+                                        labelId="status-label"
+                                        value={status}
+                                        label="Status"
+                                        onChange={(e) => setStatus(e.target.value as 'available' | 'rented' | 'maintenance' | 'pending')}                                    >
+                                        {CAR_STATUSES.map((statusOption) => (
+                                            <MenuItem key={statusOption.value} value={statusOption.value}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                    <Box
+                                                        sx={{
+                                                            width: 12,
+                                                            height: 12,
+                                                            borderRadius: '50%',
+                                                            mr: 1,
+                                                            bgcolor:
+                                                                statusOption.value === 'available' ? 'success.main' :
+                                                                    statusOption.value === 'rented' ? 'error.main' :
+                                                                        statusOption.value === 'pending' ? 'warning.main' :
+                                                                            statusOption.value === 'maintenance' ? 'warning.main' : 'info.main'
+                                                        }}
+                                                    />
+                                                    {statusOption.label}
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+
                                 {/* Image URL */}
                                 <TextField
                                     label="Image URL"
                                     value={imageUrl}
                                     onChange={handleImageUrlChange}
                                     fullWidth
-                                    placeholder="https://example.com/car-image.jpg"
-                                    helperText="Enter URL to car image"
+                                    placeholder="src/assets/cars/brand-model-year-color.jpg"
+                                    helperText="Current image path (will be updated if you upload a new image)"
                                     sx={{ mb: 3 }}
                                     InputProps={{
                                         startAdornment: (
@@ -297,41 +451,61 @@ export function ProductEdit({
                                 />
                             </Grid>
 
-                            {/* Second column for image preview */}
+                            {/* Second column for image preview and upload */}
                             <Grid item xs={12} md={5}>
-                                <Box
+                                {/* Image Upload */}
+                                <Paper
                                     sx={{
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        borderRadius: 1,
-                                        overflow: 'hidden',
-                                        height: 200,
-                                        position: 'relative',
-                                        mb: 3,
+                                        border: '2px dashed #ccc',
+                                        p: 3,
+                                        textAlign: 'center',
+                                        mb: 2,
+                                        cursor: 'pointer',
+                                        height: previewImage ? 'auto' : 200,
                                         display: 'flex',
-                                        alignItems: 'center',
+                                        flexDirection: 'column',
                                         justifyContent: 'center',
-                                        bgcolor: 'background.neutral'
+                                        alignItems: 'center',
+                                        backgroundColor: '#f8f9fa'
                                     }}
+                                    onDragOver={handleDragOver}
+                                    onDrop={handleDrop}
+                                    onClick={handleBrowseClick}
                                 >
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                        ref={fileInputRef}
+                                        style={{ display: 'none' }}
+                                    />
+
                                     {previewImage ? (
-                                        <Box
-                                            component="img"
-                                            src={previewImage}
-                                            alt="Car preview"
-                                            onError={() => setPreviewImage('')}
-                                            sx={{
-                                                maxWidth: '100%',
-                                                maxHeight: '100%',
-                                                objectFit: 'contain'
-                                            }}
-                                        />
+                                        <>
+                                            <img
+                                                src={previewImage}
+                                                alt="Car preview"
+                                                style={{ maxWidth: '100%', maxHeight: 200, marginBottom: 10 }}
+                                            />
+                                            <Typography variant="body2" color="text.secondary">
+                                                Click to {uploadedImage ? 'change' : 'update'} image
+                                            </Typography>
+                                            <Typography variant="caption" color="info.main" sx={{ mt: 1 }}>
+                                                Note: Updating this image will update all {brand} {model} ({year}) cars
+                                            </Typography>
+                                        </>
                                     ) : (
-                                        <Typography color="text.secondary">
-                                            Image preview
-                                        </Typography>
+                                        <>
+                                            <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
+                                            <Typography variant="body1" sx={{ mt: 2 }}>
+                                                Drag & drop an image here or click to browse
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                                Supported formats: JPG, PNG, JPEG, GIF
+                                            </Typography>
+                                        </>
                                     )}
-                                </Box>
+                                </Paper>
                             </Grid>
 
                             {/* Features area spans both columns */}

@@ -1,7 +1,7 @@
 // src/models/tables.js
 async function createTables(pool) {
     try {
-        // Create cars table if it doesn't exist (with all fields)
+        // Create cars table if it doesn't exist (with all fields) - UPDATED to include 'pending' status
         await pool.query(`
             CREATE TABLE IF NOT EXISTS cars (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -12,7 +12,7 @@ async function createTables(pool) {
                 color VARCHAR(30),
                 category VARCHAR(30),
                 daily_rate DECIMAL(10,2) DEFAULT 0,
-                status ENUM('available', 'rented', 'maintenance') DEFAULT 'available',
+                status ENUM('available', 'rented', 'maintenance', 'pending') DEFAULT 'available',
                 image_url VARCHAR(255),
                 features TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -86,7 +86,7 @@ async function createTables(pool) {
                 
                 -- Ford models
                 ('Ford', 'Escape', 2022, 'B501FRD', 'Blue', 'SUV', 60.00, 'available', '/src/assets/cars/ford-escape.jpeg', 'Sistem SYNC 3, Hayon acționat electric, Scaune încălzite'),
-                ('Ford', 'Escape', 2022, 'B502FRD', 'Silver', 'SUV', 60.00, 'available', '/src/assets/cars/ford-escape.jpeg', 'Sistem SYNC 3, Hayon acționat electric, Scaune încălzite, Plafon panoramic (notă: culoarea reală este argintie)'),
+                ('Ford', 'Escape', 2022, 'B502FRD', 'Silver', 'SUV', 60.00, 'rented', '/src/assets/cars/ford-escape.jpeg', 'Sistem SYNC 3, Hayon acționat electric, Scaune încălzite, Plafon panoramic (notă: culoarea reală este argintie)'),
                 ('Ford', 'Mustang', 2023, 'B601FRD', 'Red', 'Sports', 90.00, 'rented', '/src/assets/cars/ford-mustang.jpeg', 'Sistem audio premium, Pachet performanță, Decapotabilă'),
                 ('Ford', 'Mustang', 2023, 'B602FRD', 'Black', 'Sports', 90.00, 'available', '/src/assets/cars/ford-mustang.jpeg', 'Sistem audio premium, Pachet performanță, Decapotabilă (notă: culoarea reală este neagră)'),
                 
@@ -96,7 +96,7 @@ async function createTables(pool) {
                 ('Honda', 'CR-V', 2022, 'B703HND', 'Silver', 'SUV', 65.00, 'maintenance', '/src/assets/cars/honda-crv.jpeg', 'Scaune din piele, Plafon panoramic, Sistem de navigație (notă: culoarea reală este argintie)'),
                 
                 -- Other models
-                ('Hyundai', 'Tucson', 2022, 'B801HYD', 'Green', 'SUV', 55.00, 'available', '/src/assets/cars/hyundai-tucson.jpeg', 'Asistență la conducere, Apple CarPlay, Cameră 360'),
+                ('Hyundai', 'Tucson', 2022, 'B801HYD', 'Green', 'SUV', 55.00, 'rented', '/src/assets/cars/hyundai-tucson.jpeg', 'Asistență la conducere, Apple CarPlay, Cameră 360'),
                 ('Hyundai', 'Tucson', 2022, 'B802HYD', 'White', 'SUV', 55.00, 'available', '/src/assets/cars/hyundai-tucson.jpeg', 'Asistență la conducere, Apple CarPlay, Cameră 360 (notă: culoarea reală este albă)'),
                 
                 ('Jeep', 'Wrangler', 2022, 'B901JPW', 'Black', 'SUV', 80.00, 'maintenance', '/src/assets/cars/jeep-wrangler.jpeg', '4x4, Decapotabilă, Sistem multimedia Uconnect'),
@@ -145,37 +145,37 @@ async function createTables(pool) {
 
             // Insert sample customer data with Romanian names and information - adding more customers
             await pool.query(`
-                INSERT INTO customers (first_name, last_name, email, phone, driver_license, address, license_verified) VALUES
+                INSERT INTO customers (first_name, last_name, email, phone, driver_license, address, license_verified, license_image_url) VALUES
                 -- Original customers
-                ('Andrei', 'Popescu', 'andrei.popescu@gmail.com', '0722123456', 'B 123456', 'Strada Victoriei 10, București, România', 1),
-                ('Maria', 'Ionescu', 'maria.ionescu@yahoo.com', '0733234567', 'CT 234567', 'Bulevardul Mamaia 25, Constanța, România', 0),
-                ('Alexandru', 'Dumitrescu', 'alex.dumitrescu@gmail.com', '0744345678', 'IS 345678', 'Strada Ștefan cel Mare 5, Iași, România', 1),
-                ('Elena', 'Popa', 'elena.popa@gmail.com', '0755456789', 'CJ 456789', 'Bulevardul Eroilor 15, Cluj-Napoca, România', 0),
-                ('Mihai', 'Constantin', 'mihai.constantin@yahoo.com', '0766567890', 'TM 567890', 'Strada Alba Iulia 7, Timișoara, România', 1),
-                ('Ana', 'Georgescu', 'ana.georgescu@gmail.com', '0777678901', 'B 678901', 'Calea Dorobanți 30, București, România', 0),
-                ('Bogdan', 'Marin', 'bogdan.marin@yahoo.com', '0788789012', 'BV 789012', 'Strada Lungă 20, Brașov, România', 1),
-                ('Cristina', 'Stancu', 'cristina.stancu@gmail.com', '0799890123', 'PH 890123', 'Bulevardul Republicii 12, Ploiești, România', 0),
+                ('Andrei', 'Popescu', 'andrei.popescu@gmail.com', '0722123456', 'B 123456', 'Strada Victoriei 10, București, România', 1, 'src/assets/licenses/license-andrei-popescu-B123456.png'),
+                ('Maria', 'Ionescu', 'maria.ionescu@yahoo.com', '0733234567', 'CT 234567', 'Bulevardul Mamaia 25, Constanța, România', 0, NULL),
+                ('Alexandru', 'Dumitrescu', 'alex.dumitrescu@gmail.com', '0744345678', 'IS 345678', 'Strada Ștefan cel Mare 5, Iași, România', 1, 'src/assets/licenses/license-alexandru-dumitrescu-IS345678.png'),
+                ('Elena', 'Popa', 'elena.popa@gmail.com', '0755456789', 'CJ 456789', 'Bulevardul Eroilor 15, Cluj-Napoca, România', 0, NULL),
+                ('Mihai', 'Constantin', 'mihai.constantin@yahoo.com', '0766567890', 'TM 567890', 'Strada Alba Iulia 7, Timișoara, România', 1, 'src/assets/licenses/license-mihai-constantin-TM567890.png'),
+                ('Ana', 'Georgescu', 'ana.georgescu@gmail.com', '0777678901', 'B 678901', 'Calea Dorobanți 30, București, România', 0, NULL),
+                ('Bogdan', 'Marin', 'bogdan.marin@yahoo.com', '0788789012', 'BV 789012', 'Strada Lungă 20, Brașov, România', 1, 'src/assets/licenses/license-bogdan-marin-BV789012.png'),
+                ('Cristina', 'Stancu', 'cristina.stancu@gmail.com', '0799890123', 'PH 890123', 'Bulevardul Republicii 12, Ploiești, România', 0, NULL),
                 
                 -- Additional customers from various Romanian cities
-                ('Gabriel', 'Vasilescu', 'gabriel.vasilescu@gmail.com', '0711234567', 'B 112233', 'Bulevardul Unirii 45, București, România', 1),
-                ('Ioana', 'Diaconu', 'ioana.diaconu@yahoo.com', '0722345678', 'SB 223344', 'Strada Nicolae Bălcescu 8, Sibiu, România', 0),
-                ('Adrian', 'Stoica', 'adrian.stoica@gmail.com', '0733456789', 'CT 334455', 'Strada Mircea cel Bătrân 15, Constanța, România', 1),
-                ('Daniela', 'Nistor', 'daniela.nistor@yahoo.com', '0744567890', 'AR 445566', 'Bulevardul Revoluției 23, Arad, România', 0),
-                ('Florin', 'Ciobanu', 'florin.ciobanu@gmail.com', '0755678901', 'BT 556677', 'Calea Națională 10, Botoșani, România', 1),
-                ('Laura', 'Preda', 'laura.preda@yahoo.com', '0766789012', 'GL 667788', 'Strada Domnească 18, Galați, România', 0),
-                ('Răzvan', 'Dragomir', 'razvan.dragomir@gmail.com', '0777890123', 'VL 778899', 'Strada Regina Maria 7, Râmnicu Vâlcea, România', 1),
-                ('Simona', 'Bălan', 'simona.balan@yahoo.com', '0788901234', 'OT 889900', 'Bulevardul Alexandru Ioan Cuza 22, Slatina, România', 0),
-                ('Tudor', 'Mihai', 'tudor.mihai@gmail.com', '0799012345', 'HD 990011', 'Bulevardul Decebal 31, Deva, România', 1),
-                ('Carmen', 'Neacșu', 'carmen.neacsu@yahoo.com', '0710123456', 'DB 001122', 'Strada Gării 9, Târgoviște, România', 0),
-                ('Sorin', 'Bucur', 'sorin.bucur@gmail.com', '0721234567', 'MM 110022', 'Bulevardul Republicii 17, Baia Mare, România', 1),
-                ('Andreea', 'Niculescu', 'andreea.niculescu@yahoo.com', '0732345678', 'DJ 223300', 'Strada Unirii 25, Craiova, România', 0),
-                ('Octavian', 'Rusu', 'octavian.rusu@gmail.com', '0743456789', 'MS 334400', 'Piața Trandafirilor 14, Târgu Mureș, România', 1),
-                ('Raluca', 'Tomescu', 'raluca.tomescu@yahoo.com', '0754567890', 'VS 445500', 'Strada Ștefan cel Mare 29, Vaslui, România', 0),
+                ('Gabriel', 'Vasilescu', 'gabriel.vasilescu@gmail.com', '0711234567', 'B 112233', 'Bulevardul Unirii 45, București, România', 1, 'src/assets/licenses/license-gabriel-vasilescu-B112233.png'),
+                ('Ioana', 'Diaconu', 'ioana.diaconu@yahoo.com', '0722345678', 'SB 223344', 'Strada Nicolae Bălcescu 8, Sibiu, România', 0, NULL),
+                ('Adrian', 'Stoica', 'adrian.stoica@gmail.com', '0733456789', 'CT 334455', 'Strada Mircea cel Bătrân 15, Constanța, România', 1, 'src/assets/licenses/license-adrian-stoica-CT334455.png'),
+                ('Daniela', 'Nistor', 'daniela.nistor@yahoo.com', '0744567890', 'AR 445566', 'Bulevardul Revoluției 23, Arad, România', 0, NULL),
+                ('Florin', 'Ciobanu', 'florin.ciobanu@gmail.com', '0755678901', 'BT 556677', 'Calea Națională 10, Botoșani, România', 1, 'src/assets/licenses/license-florin-ciobanu-BT556677.png'),
+                ('Laura', 'Preda', 'laura.preda@yahoo.com', '0766789012', 'GL 667788', 'Strada Domnească 18, Galați, România', 0, NULL),
+                ('Răzvan', 'Dragomir', 'razvan.dragomir@gmail.com', '0777890123', 'VL 778899', 'Strada Regina Maria 7, Râmnicu Vâlcea, România', 1, 'src/assets/licenses/license-razvan-dragomir-VL778899.png'),
+                ('Simona', 'Bălan', 'simona.balan@yahoo.com', '0788901234', 'OT 889900', 'Bulevardul Alexandru Ioan Cuza 22, Slatina, România', 0, NULL),
+                ('Tudor', 'Mihai', 'tudor.mihai@gmail.com', '0799012345', 'HD 990011', 'Bulevardul Decebal 31, Deva, România', 1, 'src/assets/licenses/license-tudor-mihai-HD990011.png'),
+                ('Carmen', 'Neacșu', 'carmen.neacsu@yahoo.com', '0710123456', 'DB 001122', 'Strada Gării 9, Târgoviște, România', 0, NULL),
+                ('Sorin', 'Bucur', 'sorin.bucur@gmail.com', '0721234567', 'MM 110022', 'Bulevardul Republicii 17, Baia Mare, România', 1, 'src/assets/licenses/license-sorin-bucur-MM110022.png'),
+                ('Andreea', 'Niculescu', 'andreea.niculescu@yahoo.com', '0732345678', 'DJ 223300', 'Strada Unirii 25, Craiova, România', 0, NULL),
+                ('Octavian', 'Rusu', 'octavian.rusu@gmail.com', '0743456789', 'MS 334400', 'Piața Trandafirilor 14, Târgu Mureș, România', 1, 'src/assets/licenses/license-octavian-rusu-MS334400.png'),
+                ('Raluca', 'Tomescu', 'raluca.tomescu@yahoo.com', '0754567890', 'VS 445500', 'Strada Ștefan cel Mare 29, Vaslui, România', 0, NULL),
                 
                 -- Additional customers for overdue rentals
-                ('Victor', 'Radu', 'victor.radu@gmail.com', '0765432109', 'B 112233', 'Strada Primăverii 15, București, România', 1),
-                ('Lucia', 'Moraru', 'lucia.moraru@yahoo.com', '0776543210', 'CJ 223344', 'Calea Turzii 27, Cluj-Napoca, România', 0),
-                ('Denis', 'Popovici', 'denis.popovici@gmail.com', '0787654321', 'IS 334455', 'Bulevardul Independenței 9, Iași, România', 1)
+                ('Victor', 'Radu', 'victor.radu@gmail.com', '0765432109', 'B 112233', 'Strada Primăverii 15, București, România', 1, 'src/assets/licenses/license-victor-radu-B112233.png'),
+                ('Lucia', 'Moraru', 'lucia.moraru@yahoo.com', '0776543210', 'CJ 223344', 'Calea Turzii 27, Cluj-Napoca, România', 0, NULL),
+                ('Denis', 'Popovici', 'denis.popovici@gmail.com', '0787654321', 'IS 334455', 'Bulevardul Independenței 9, Iași, România', 1, 'src/assets/licenses/license-denis-popovici-IS334455.png')
             `);
 
             // Get car and customer IDs
@@ -232,7 +232,7 @@ async function createTables(pool) {
                 // Create a collection of rentals with various statuses and dates
                 let rentalValues = [];
 
-                // Completed rentals
+                // Completed rentals (these cars should have returned to available status)
                 rentalValues.push(createRentalQuery(1, 1, twoWeeksAgo, oneWeekAgo, 'completed', 'paid', 'Client mulțumit, mașină returnată în stare excelentă'));
                 rentalValues.push(createRentalQuery(14, 2, oneWeekAgo, threeDaysAgo, 'completed', 'paid', 'Închiriere fără probleme, client fidel'));
                 rentalValues.push(createRentalQuery(3, 3, threeDaysAgo, yesterday, 'completed', 'paid', 'Client nou, foarte mulțumit de servicii'));
@@ -244,19 +244,19 @@ async function createTables(pool) {
                 rentalValues.push(createRentalQuery(33, 9, tenDaysAgo, fiveDaysAgo, 'completed', 'paid', 'Închiriere fără probleme, client a lăsat feedback foarte bun'));
                 rentalValues.push(createRentalQuery(37, 10, sixDaysAgo, threeDaysAgo, 'completed', 'paid', 'Client fidel, a închiriat pentru un drum de afaceri'));
 
-                // Active rentals
+                // Active rentals (these cars must be marked as rented - making sure our sample data is correct)
                 rentalValues.push(createRentalQuery(12, 11, yesterday, fiveDaysLater, 'active', 'paid', 'Asigurare premium inclusă, client VIP'));
                 rentalValues.push(createRentalQuery(22, 12, today, threeDaysLater, 'active', 'partial', 'Plată parțială efectuată, rest la returnare'));
                 rentalValues.push(createRentalQuery(26, 13, yesterday, fourDaysLater, 'active', 'paid', 'Închiriere pentru un eveniment special, client fidel'));
                 rentalValues.push(createRentalQuery(32, 14, today, twoDaysLater, 'active', 'partial', 'Solicitare loc parcare acoperit, cliente mulțumit'));
                 rentalValues.push(createRentalQuery(38, 15, yesterday, threeDaysLater, 'active', 'paid', 'Client fidel, a închiriat pentru o călătorie de afaceri'));
 
-                // Overdue rentals (still active but end_date has passed)
+                // Overdue rentals (still active but end_date has passed - these cars must be marked as rented)
                 rentalValues.push(createRentalQuery(8, 21, sixDaysAgo, yesterday, 'active', 'paid', 'Client nu a returnat mașina la timp, contact telefonic necesar'));
                 rentalValues.push(createRentalQuery(16, 22, fiveDaysAgo, twoDaysAgo, 'active', 'paid', 'Întârziere returnare, client a solicitat prelungire dar nu a confirmat'));
                 rentalValues.push(createRentalQuery(25, 23, fourDaysAgo, yesterday, 'active', 'partial', 'Client nu răspunde la apeluri, se impune verificare locație GPS'));
 
-                // Pending rentals
+                // Pending rentals (these cars must be marked as rented as well for future reservations)
                 rentalValues.push(createRentalQuery(10, 16, tomorrow, fiveDaysLater, 'pending', 'unpaid', 'Rezervare confirmată, așteptare plată'));
                 rentalValues.push(createRentalQuery(20, 17, tomorrow, threeDaysLater, 'pending', 'unpaid', 'Client nou, va achita la ridicare'));
                 rentalValues.push(createRentalQuery(28, 18, twoDaysLater, fourDaysLater, 'pending', 'unpaid', 'Prima închiriere, a solicitat asistență la ridicare'));
@@ -277,6 +277,39 @@ async function createTables(pool) {
                     `INSERT INTO rentals (car_id, customer_id, start_date, end_date, status, total_cost, payment_status, notes) VALUES ${placeholders}`,
                     flatValues
                 );
+
+                // Now update car statuses based on rentals to ensure consistency
+                // Get all cars with active or pending rentals
+                const [activeRentals] = await pool.query(
+                    "SELECT car_id FROM rentals WHERE status IN ('active', 'pending')"
+                );
+
+                // Extract car IDs with active or pending rentals
+                const carsWithRentals = activeRentals.map(rental => rental.car_id);
+
+                // Update all these cars to have 'rented' status
+                if (carsWithRentals.length > 0) {
+                    await pool.query(
+                        `UPDATE cars SET status = 'rented' WHERE id IN (${carsWithRentals.join(',')})`
+                    );
+                    console.log(`Updated ${carsWithRentals.length} cars to 'rented' status based on active/pending rentals`);
+                }
+
+                // For cars with pending rentals where start_date is in the future, update them to 'pending' status
+                const [pendingFutureRentals] = await pool.query(
+                    "SELECT car_id FROM rentals WHERE status = 'pending' AND start_date > CURDATE()"
+                );
+
+                // Extract car IDs with future pending rentals
+                const carsWithPendingFuture = pendingFutureRentals.map(rental => rental.car_id);
+
+                // Update these cars to have 'pending' status instead
+                if (carsWithPendingFuture.length > 0) {
+                    await pool.query(
+                        `UPDATE cars SET status = 'pending' WHERE id IN (${carsWithPendingFuture.join(',')})`
+                    );
+                    console.log(`Updated ${carsWithPendingFuture.length} cars to 'pending' status for future rentals`);
+                }
             }
 
             console.log('Sample data inserted successfully');

@@ -16,6 +16,14 @@ import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { ColorPreview } from 'src/components/color-utils';
 
+// Translation mappings for status labels
+const STATUS_TRANSLATIONS: Record<string, string> = {
+  'available': 'Disponibil',
+  'rented': 'Închiriat',
+  'maintenance': 'În mentenanță',
+  'pending': 'În așteptare'
+};
+
 // Interface for the grouped data passed within product prop
 interface GroupedCarProductData {
   groupKey: string;
@@ -94,10 +102,10 @@ export function ProductItem({ product, onClick, mode = 'individual' }: ProductIt
         labelColor = 'warning';
       }
     } else if (mode === 'individual') {
-      // For individual cars, always show the actual status text (rented, pending, maintenance, etc.)
-      labelText = product.status;
+      // For individual cars, show the translated status
+      labelText = STATUS_TRANSLATIONS[product.status] || product.status;
 
-      // Set color based on status
+      // Set color based on status (using English status values for logic)
       if (product.status === 'available') {
         labelColor = 'success';
       } else if (product.status === 'rented') {
@@ -165,17 +173,17 @@ export function ProductItem({ product, onClick, mode = 'individual' }: ProductIt
     return (
       <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mt: 1, mb: 1 }}>
         <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 'bold' }}>
-          {product.groupData.availableCount} Avail.
+          {product.groupData.availableCount} Disp.
         </Typography>
         <Typography variant="caption" sx={{ color: 'error.main' }}>
-          {product.groupData.rentedCount} Rented
+          {product.groupData.rentedCount} Înch.
         </Typography>
         <Typography variant="caption" sx={{ color: 'warning.main' }}>
-          {product.groupData.maintenanceCount} Maint.
+          {product.groupData.maintenanceCount} Ment.
         </Typography>
         {/* Add Pending count to the display */}
         <Typography variant="caption" sx={{ color: 'info.main' }}>
-          {product.groupData.pendingCount || 0} Pending
+          {product.groupData.pendingCount || 0} În așt.
         </Typography>
       </Stack>
     );
@@ -213,7 +221,7 @@ export function ProductItem({ product, onClick, mode = 'individual' }: ProductIt
             </Typography>
             {product.year && (
               <Typography variant="body2" color="text.secondary" noWrap>
-                Year: {product.year}
+                An: {product.year}
               </Typography>
             )}
           </Box>
@@ -238,14 +246,14 @@ export function ProductItem({ product, onClick, mode = 'individual' }: ProductIt
             {mode === 'group' && (
               <MenuItem onClick={handlePrimaryAction} dense>
                 <Iconify icon="eva:list-fill" sx={{ mr: 1 }} />
-                View Stock
+                Vezi Stoc
               </MenuItem>
             )}
             {mode === 'individual' && (
               <>
                 <MenuItem onClick={handlePrimaryAction} dense> {/* Assumes onClick handles edit for individual */}
                   <Iconify icon="eva:edit-fill" sx={{ mr: 1 }} />
-                  Edit Car
+                  Editează Mașină
                 </MenuItem>
                 {/* Add View Details for individual if needed */}
                 {/* <MenuItem onClick={handleViewDetails} dense>

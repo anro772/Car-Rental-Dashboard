@@ -403,7 +403,7 @@ export function ProductsView() {
     <DashboardContent>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 5 }}>
-        <Typography variant="h4">Parc auto</Typography>
+        <Typography variant="h4">Parc Automobile</Typography>
         <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => setAddDialogOpen(true)}>
           Adaugă o mașină
         </Button>

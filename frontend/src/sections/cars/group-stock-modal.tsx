@@ -26,6 +26,15 @@ import { Iconify } from 'src/components/iconify';
 import type { Car } from 'src/services/carsService'; // Import the Car type
 import rentalsService, { RentalExtended } from 'src/services/rentalsService'; // Import rentals service
 
+// Status translation mapping
+const STATUS_TRANSLATIONS: Record<string, string> = {
+    'available': 'Disponibil',
+    'rented': 'Închiriat',
+    'maintenance': 'În mentenanță',
+    'pending': 'În așteptare',
+    'unknown': 'Necunoscut'
+};
+
 // Define props for the modal
 type GroupStockModalProps = {
     open: boolean;
@@ -165,7 +174,7 @@ export function GroupStockModal({
             <DialogTitle>
                 Detalii stoc: {groupName}
                 <IconButton
-                    aria-label="close"
+                    aria-label="închide"
                     onClick={onClose}
                     sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
                 >
@@ -196,13 +205,15 @@ export function GroupStockModal({
                                         <TableCell>Plăcuță de înmatriculare</TableCell>
                                         <TableCell>Culoare</TableCell>
                                         <TableCell>Status</TableCell>
-                                        <TableCell align="right">Rata zilnică</TableCell>
+                                        <TableCell align="right">Tarif zilnic</TableCell>
                                         <TableCell align="center">Acțiuni</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {cars.map((car) => {
                                         const displayStatus = getDisplayStatus(car);
+                                        // Get translated status for display
+                                        const translatedStatus = STATUS_TRANSLATIONS[displayStatus.status] || displayStatus.status;
 
                                         return (
                                             <TableRow key={car.id} hover>
@@ -212,18 +223,18 @@ export function GroupStockModal({
                                                 <TableCell>{car.color || '-'}</TableCell>
                                                 <TableCell>
                                                     <Label color={displayStatus.color} variant="filled">
-                                                        {displayStatus.status}
+                                                        {translatedStatus}
                                                     </Label>
                                                 </TableCell>
                                                 <TableCell align="right">{fCurrency(car.daily_rate)}</TableCell>
                                                 <TableCell align="center">
                                                     <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                        <Tooltip title="View Details">
+                                                        <Tooltip title="Vezi detalii">
                                                             <IconButton size="small" onClick={() => handleViewDetails(car.id)}>
                                                                 <Iconify icon="eva:eye-fill" />
                                                             </IconButton>
                                                         </Tooltip>
-                                                        <Tooltip title="Edit Car">
+                                                        <Tooltip title="Editează mașina">
                                                             <IconButton size="small" onClick={() => handleEditClick(car)}>
                                                                 <Iconify icon="eva:edit-fill" />
                                                             </IconButton>
@@ -231,9 +242,9 @@ export function GroupStockModal({
                                                         {/* Delete button - only show if onDeleteCar prop is provided and car is not rented or pending */}
                                                         {onDeleteCar && (
                                                             <Tooltip title={
-                                                                displayStatus.status === 'rented' ? "Can't delete rented cars" :
-                                                                    displayStatus.status === 'pending' ? "Can't delete pending cars" :
-                                                                        "Delete Car"
+                                                                displayStatus.status === 'rented' ? "Nu se pot șterge mașinile închiriate" :
+                                                                    displayStatus.status === 'pending' ? "Nu se pot șterge mașinile în așteptare" :
+                                                                        "Șterge mașina"
                                                             }>
                                                                 <span> {/* Wrapper to maintain tooltip when button is disabled */}
                                                                     <IconButton
@@ -270,7 +281,7 @@ export function GroupStockModal({
                             return displayStatus.status === 'rented' || displayStatus.status === 'pending';
                         }) && (
                                 <Typography variant="caption" color="error" sx={{ display: 'block', mt: 2 }}>
-                                    * Mașinile cu statutul „închiriat” sau „în așteptare” nu pot fi șterse. Acestea trebuie mai întâi returnate sau rezervarea lor trebuie completată.
+                                    * Mașinile cu statutul „închiriat" sau „în așteptare" nu pot fi șterse. Acestea trebuie mai întâi returnate sau rezervarea lor trebuie completată.
                                 </Typography>
                             )}
                     </>

@@ -29,7 +29,7 @@ type ProductEditProps = {
     onSave: () => void;
 };
 
-// Car categories based on screenshot
+// Car categories based on screenshot - keep original English values for backend
 const CAR_CATEGORIES = [
     'Sedan',
     'SUV',
@@ -39,7 +39,17 @@ const CAR_CATEGORIES = [
     'Wagon'
 ];
 
-// Car colors based on screenshot
+// Romanian display names for categories
+const CATEGORY_TRANSLATIONS: Record<string, string> = {
+    'Sedan': 'Sedan',
+    'SUV': 'SUV',
+    'Sports': 'Sport',
+    'Luxury': 'Lux',
+    'Hatchback': 'Hatchback',
+    'Wagon': 'Break'
+};
+
+// Car colors - keep in English for backend
 const CAR_COLORS = [
     'Red',
     'Black',
@@ -51,10 +61,22 @@ const CAR_COLORS = [
     'Green'
 ];
 
-// Car status options
+// Romanian display names for colors
+const COLOR_TRANSLATIONS: Record<string, string> = {
+    'Red': 'Roșu',
+    'Black': 'Negru',
+    'White': 'Alb',
+    'Silver': 'Argintiu',
+    'Blue': 'Albastru',
+    'Gray': 'Gri',
+    'Yellow': 'Galben',
+    'Green': 'Verde'
+};
+
+// Car status options - keep values in English for backend, but display in Romanian
 const CAR_STATUSES = [
-    { value: 'available', label: 'Functioning' },
-    { value: 'maintenance', label: 'Maintenance' },
+    { value: 'available', label: 'Funcțional' },
+    { value: 'maintenance', label: 'În mentenanță' },
 ];
 
 export function ProductEdit({
@@ -102,7 +124,7 @@ export function ProductEdit({
                     setPreviewImage(car.image_url || '');
                 } catch (err) {
                     console.error('Failed to fetch car details:', err);
-                    setError('Failed to load car details. Some values may be missing.');
+                    setError('Nu s-au putut încărca detaliile mașinii. Unele valori ar putea lipsi.');
                 } finally {
                     setFetching(false);
                 }
@@ -135,7 +157,7 @@ export function ProductEdit({
                     console.log('Uploaded image path:', filePath);
                 } catch (uploadError) {
                     console.error('Image upload failed:', uploadError);
-                    setError('Failed to upload image. Will continue with existing image.');
+                    setError('Nu s-a putut încărca imaginea. Se va continua cu imaginea existentă.');
                 }
             }
 
@@ -171,7 +193,7 @@ export function ProductEdit({
             onClose();
         } catch (err) {
             console.error('Failed to update car:', err);
-            setError('Failed to update car. Please try again.');
+            setError('Nu s-a putut actualiza mașina. Vă rugăm să încercați din nou.');
         } finally {
             setLoading(false);
         }
@@ -257,7 +279,7 @@ export function ProductEdit({
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>Edit Car Details</DialogTitle>
+            <DialogTitle>Editează detaliile mașinii</DialogTitle>
 
             <DialogContent>
                 {fetching ? (
@@ -273,7 +295,7 @@ export function ProductEdit({
                                     {/* Display brand and model (read-only) */}
                                     <Grid item xs={12} sm={6}>
                                         <TextField
-                                            label="Brand"
+                                            label="Marcă"
                                             value={brand}
                                             fullWidth
                                             sx={{ mb: 2 }}
@@ -297,7 +319,7 @@ export function ProductEdit({
                                     {/* License Plate */}
                                     <Grid item xs={12} sm={6}>
                                         <TextField
-                                            label="License Plate"
+                                            label="Număr de înmatriculare"
                                             value={licensePlate}
                                             onChange={(e) => setLicensePlate(e.target.value)}
                                             fullWidth
@@ -309,7 +331,7 @@ export function ProductEdit({
                                     {/* Year */}
                                     <Grid item xs={12} sm={6}>
                                         <TextField
-                                            label="Year"
+                                            label="An"
                                             type="number"
                                             value={year}
                                             onChange={handleYearChange}
@@ -323,7 +345,7 @@ export function ProductEdit({
                                             error={typeof year === 'number' && (year < 1900 || year > currentYear + 1)}
                                             helperText={
                                                 typeof year === 'number' && (year < 1900 || year > currentYear + 1)
-                                                    ? `Year must be between 1900 and ${currentYear + 1}`
+                                                    ? `Anul trebuie să fie între 1900 și ${currentYear + 1}`
                                                     : ''
                                             }
                                         />
@@ -331,39 +353,41 @@ export function ProductEdit({
                                 </Grid>
 
                                 <TextField
-                                    label="Daily Rate"
+                                    label="Tarif zilnic"
                                     type="number"
                                     value={dailyRate}
                                     onChange={(e) => setDailyRate(Number(e.target.value))}
                                     fullWidth
                                     InputProps={{
-                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                        startAdornment: <InputAdornment position="start">Lei</InputAdornment>,
                                     }}
                                     sx={{ mb: 3 }}
                                 />
 
                                 {/* Category selection */}
                                 <FormControl fullWidth sx={{ mb: 3 }}>
-                                    <InputLabel id="category-label">Category</InputLabel>
+                                    <InputLabel id="category-label">Categorie</InputLabel>
                                     <Select
                                         labelId="category-label"
                                         value={category}
-                                        label="Category"
+                                        label="Categorie"
                                         onChange={(e) => setCategory(e.target.value)}
                                     >
                                         {CAR_CATEGORIES.map((cat) => (
-                                            <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                                            <MenuItem key={cat} value={cat}>
+                                                {CATEGORY_TRANSLATIONS[cat] || cat}
+                                            </MenuItem>
                                         ))}
                                     </Select>
                                 </FormControl>
 
                                 {/* Color selection */}
                                 <FormControl fullWidth sx={{ mb: 3 }}>
-                                    <InputLabel id="color-label">Color</InputLabel>
+                                    <InputLabel id="color-label">Culoare</InputLabel>
                                     <Select
                                         labelId="color-label"
                                         value={color}
-                                        label="Color"
+                                        label="Culoare"
                                         onChange={(e) => setColor(e.target.value)}
                                         renderValue={(selected) => (
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -377,7 +401,7 @@ export function ProductEdit({
                                                         mr: 1
                                                     }}
                                                 />
-                                                {selected}
+                                                {COLOR_TRANSLATIONS[selected] || selected}
                                             </Box>
                                         )}
                                     >
@@ -394,7 +418,7 @@ export function ProductEdit({
                                                             mr: 1
                                                         }}
                                                     />
-                                                    {colorOption}
+                                                    {COLOR_TRANSLATIONS[colorOption] || colorOption}
                                                 </Box>
                                             </MenuItem>
                                         ))}
@@ -403,11 +427,11 @@ export function ProductEdit({
 
                                 {/* Status selection */}
                                 <FormControl fullWidth sx={{ mb: 3 }}>
-                                    <InputLabel id="status-label">Status</InputLabel>
+                                    <InputLabel id="status-label">Stare</InputLabel>
                                     <Select
                                         labelId="status-label"
                                         value={status}
-                                        label="Status"
+                                        label="Stare"
                                         onChange={(e) => setStatus(e.target.value as 'available' | 'rented' | 'maintenance' | 'pending')}                                    >
                                         {CAR_STATUSES.map((statusOption) => (
                                             <MenuItem key={statusOption.value} value={statusOption.value}>
@@ -434,12 +458,12 @@ export function ProductEdit({
 
                                 {/* Image URL */}
                                 <TextField
-                                    label="Image URL"
+                                    label="URL Imagine"
                                     value={imageUrl}
                                     onChange={handleImageUrlChange}
                                     fullWidth
                                     placeholder="src/assets/cars/brand-model-year-color.jpg"
-                                    helperText="Current image path (will be updated if you upload a new image)"
+                                    helperText="Calea curentă a imaginii (va fi actualizată dacă încărcați o imagine nouă)"
                                     sx={{ mb: 3 }}
                                     InputProps={{
                                         startAdornment: (
@@ -484,24 +508,24 @@ export function ProductEdit({
                                         <>
                                             <img
                                                 src={previewImage}
-                                                alt="Car preview"
+                                                alt="Previzualizare mașină"
                                                 style={{ maxWidth: '100%', maxHeight: 200, marginBottom: 10 }}
                                             />
                                             <Typography variant="body2" color="text.secondary">
-                                                Click to {uploadedImage ? 'change' : 'update'} image
+                                                Faceți clic pentru a {uploadedImage ? 'schimba' : 'actualiza'} imaginea
                                             </Typography>
                                             <Typography variant="caption" color="info.main" sx={{ mt: 1 }}>
-                                                Note: Updating this image will update all {brand} {model} ({year}) cars
+                                                Notă: Actualizarea acestei imagini va actualiza toate mașinile {brand} {model} ({year})
                                             </Typography>
                                         </>
                                     ) : (
                                         <>
                                             <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
                                             <Typography variant="body1" sx={{ mt: 2 }}>
-                                                Drag & drop an image here or click to browse
+                                                Trageți și plasați o imagine aici sau faceți clic pentru a naviga
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                                Supported formats: JPG, PNG, JPEG, GIF
+                                                Formate acceptate: JPG, PNG, JPEG, GIF
                                             </Typography>
                                         </>
                                     )}
@@ -511,14 +535,14 @@ export function ProductEdit({
                             {/* Features area spans both columns */}
                             <Grid item xs={12}>
                                 <TextField
-                                    label="Features"
+                                    label="Caracteristici"
                                     multiline
                                     rows={4}
                                     value={features}
                                     onChange={(e) => setFeatures(e.target.value)}
                                     fullWidth
-                                    placeholder="List car features (e.g., Bluetooth, Navigation, Leather seats)"
-                                    helperText="Separate features with commas"
+                                    placeholder="Enumerați caracteristicile mașinii (ex: Bluetooth, Navigație, Scaune din piele)"
+                                    helperText="Separați caracteristicile prin virgule"
                                 />
                             </Grid>
                         </Grid>
@@ -534,14 +558,14 @@ export function ProductEdit({
 
             <DialogActions>
                 <Button onClick={onClose} disabled={loading || fetching}>
-                    Cancel
+                    Anulează
                 </Button>
                 <Button
                     onClick={handleSave}
                     variant="contained"
                     disabled={loading || fetching}
                 >
-                    {loading ? 'Saving...' : 'Save Changes'}
+                    {loading ? 'Se salvează...' : 'Salvează modificările'}
                 </Button>
             </DialogActions>
         </Dialog>

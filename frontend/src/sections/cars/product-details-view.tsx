@@ -24,6 +24,22 @@ import rentalsService from 'src/services/rentalsService';
 import { ProductEdit } from './product-edit';
 import toyotaCamryImage from 'src/assets/cars/toyota-camry.jpeg';
 
+// Status translations for UI display
+const STATUS_TRANSLATIONS: Record<string, string> = {
+    'available': 'Disponibil',
+    'rented': 'Închiriat',
+    'maintenance': 'În mentenanță',
+    'pending': 'În așteptare'
+};
+
+// Rental status translations
+const RENTAL_STATUS_TRANSLATIONS: Record<string, string> = {
+    'active': 'Activ',
+    'completed': 'Finalizat',
+    'pending': 'În așteptare',
+    'cancelled': 'Anulat'
+};
+
 export function CarDetailsView() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
@@ -56,7 +72,7 @@ export function CarDetailsView() {
     useEffect(() => {
         const fetchCar = async () => {
             if (!carId || isNaN(carId)) {
-                setError('Invalid car ID');
+                setError('ID mașină invalid');
                 setLoading(false);
                 return;
             }
@@ -73,7 +89,7 @@ export function CarDetailsView() {
                 setRentalsLoading(false);
             } catch (err) {
                 console.error('Failed to fetch car details:', err);
-                setError('Failed to load car details. Please try again.');
+                setError('Nu s-au putut încărca detaliile mașinii. Vă rugăm să încercați din nou.');
             } finally {
                 setLoading(false);
             }
@@ -114,14 +130,14 @@ export function CarDetailsView() {
         return (
             <DashboardContent>
                 <Alert severity="error" sx={{ mb: 3 }}>
-                    {error || 'Car not found'}
+                    {error || 'Mașina nu a fost găsită'}
                 </Alert>
                 <Button
                     variant="outlined"
                     startIcon={<Iconify icon="eva:arrow-back-fill" />}
                     onClick={handleBack}
                 >
-                    Back to Cars
+                    Înapoi la Mașini
                 </Button>
             </DashboardContent>
         );
@@ -154,7 +170,7 @@ export function CarDetailsView() {
                         onClick={handleBack}
                         sx={{ mr: 2 }}
                     >
-                        Back
+                        Înapoi
                     </Button>
                     <Typography variant="h4">{brand} {model} ({year})</Typography>
                 </Box>
@@ -164,7 +180,7 @@ export function CarDetailsView() {
                     startIcon={<Iconify icon="eva:edit-fill" />}
                     onClick={handleEdit}
                 >
-                    Edit Car
+                    Editează Mașina
                 </Button>
             </Box>
 
@@ -203,7 +219,7 @@ export function CarDetailsView() {
                                     textTransform: 'uppercase',
                                 }}
                             >
-                                {status}
+                                {status && STATUS_TRANSLATIONS[status as keyof typeof STATUS_TRANSLATIONS] || status || ''}
                             </Label>
                         </Box>
                     </Card>
@@ -213,7 +229,7 @@ export function CarDetailsView() {
                 <Grid item xs={12} md={6} lg={7}>
                     <Card sx={{ p: 3 }}>
                         <Typography variant="h4" sx={{ mb: 3 }}>
-                            {fCurrency(daily_rate)}<Typography component="span" variant="body1">/day</Typography>
+                            {fCurrency(daily_rate).replace('$', '')}<Typography component="span" variant="body1"> Lei/zi</Typography>
                         </Typography>
 
                         <Divider sx={{ mb: 3 }} />
@@ -223,14 +239,14 @@ export function CarDetailsView() {
                                 <Stack spacing={1.5}>
                                     <Box>
                                         <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-                                            License Plate
+                                            Număr de înmatriculare
                                         </Typography>
                                         <Typography variant="body2">{license_plate}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-                                            Category
+                                            Categorie
                                         </Typography>
                                         <Typography variant="body2">{category}</Typography>
                                     </Box>
@@ -241,7 +257,7 @@ export function CarDetailsView() {
                                 <Stack spacing={1.5}>
                                     <Box>
                                         <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-                                            Color
+                                            Culoare
                                         </Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                             <Box
@@ -260,7 +276,7 @@ export function CarDetailsView() {
 
                                     <Box>
                                         <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-                                            Added on
+                                            Adăugat la
                                         </Typography>
                                         <Typography variant="body2">
                                             {created_at ? new Date(created_at).toLocaleDateString() : 'N/A'}
@@ -274,7 +290,7 @@ export function CarDetailsView() {
                         {featuresList.length > 0 && (
                             <Box sx={{ mt: 3 }}>
                                 <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                                    Features
+                                    Caracteristici
                                 </Typography>
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                     {featuresList.map((feature, index) => (
@@ -294,7 +310,7 @@ export function CarDetailsView() {
                 {/* Rental History */}
                 <Grid item xs={12}>
                     <Card sx={{ p: 3 }}>
-                        <Typography variant="h6" sx={{ mb: 3 }}>Rental History</Typography>
+                        <Typography variant="h6" sx={{ mb: 3 }}>Istoric închirieri</Typography>
 
                         {rentalsLoading ? (
                             <Box display="flex" justifyContent="center" py={3}>
@@ -302,7 +318,7 @@ export function CarDetailsView() {
                             </Box>
                         ) : rentals.length === 0 ? (
                             <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 3 }}>
-                                No rental history found for this car.
+                                Nu s-a găsit niciun istoric de închiriere pentru această mașină.
                             </Typography>
                         ) : (
                             <Box sx={{ overflowX: 'auto' }}>
@@ -314,9 +330,9 @@ export function CarDetailsView() {
                                 }}>
                                     <Box sx={{ display: 'table-header-group', bgcolor: 'background.neutral' }}>
                                         <Box sx={{ display: 'table-row' }}>
-                                            <Box sx={{ display: 'table-cell', p: 2 }}>Customer</Box>
-                                            <Box sx={{ display: 'table-cell', p: 2 }}>Start Date</Box>
-                                            <Box sx={{ display: 'table-cell', p: 2 }}>End Date</Box>
+                                            <Box sx={{ display: 'table-cell', p: 2 }}>Client</Box>
+                                            <Box sx={{ display: 'table-cell', p: 2 }}>Data început</Box>
+                                            <Box sx={{ display: 'table-cell', p: 2 }}>Data sfârșit</Box>
                                             <Box sx={{ display: 'table-cell', p: 2 }}>Status</Box>
                                             <Box sx={{ display: 'table-cell', p: 2, textAlign: 'right' }}>Cost</Box>
                                         </Box>
@@ -350,11 +366,11 @@ export function CarDetailsView() {
                                                                         rental.status === 'cancelled' ? 'error' : 'default'
                                                         }
                                                     >
-                                                        {rental.status}
+                                                        {rental.status && RENTAL_STATUS_TRANSLATIONS[rental.status as keyof typeof RENTAL_STATUS_TRANSLATIONS] || rental.status || ''}
                                                     </Label>
                                                 </Box>
                                                 <Box sx={{ display: 'table-cell', p: 2, textAlign: 'right' }}>
-                                                    ${rental.total_cost}
+                                                    {rental.total_cost} Lei
                                                 </Box>
                                             </Box>
                                         ))}

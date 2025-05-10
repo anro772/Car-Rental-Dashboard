@@ -27,9 +27,27 @@ const CAR_IMAGES = {
     'default': 'src/assets/cars/default-car.jpeg'
 };
 
-const CATEGORIES = ['Sedan', 'SUV', 'Sports', 'Luxury', 'Hatchback', 'Wagon'];
-const COLORS = ['Red', 'Black', 'White', 'Silver', 'Blue', 'Gray', 'Yellow', 'Green'];
+const CATEGORIES = ['Sedan', 'SUV', 'Sport', 'Lux', 'Hatchback', 'Break'];
+
+// Color mapping for display and functionality
+const COLOR_MAPPING = [
+    { value: 'Red', display: 'Roșu', cssColor: 'red' },
+    { value: 'Black', display: 'Negru', cssColor: 'black' },
+    { value: 'White', display: 'Alb', cssColor: 'white' },
+    { value: 'Silver', display: 'Argintiu', cssColor: 'silver' },
+    { value: 'Blue', display: 'Albastru', cssColor: 'blue' },
+    { value: 'Gray', display: 'Gri', cssColor: 'gray' },
+    { value: 'Yellow', display: 'Galben', cssColor: 'yellow' },
+    { value: 'Green', display: 'Verde', cssColor: 'green' }
+];
+
+// Keep original status values for backend but create a translation map for display
 const STATUSES = ['available', 'rented', 'maintenance'] as const;
+const STATUS_TRANSLATIONS: Record<string, string> = {
+    'available': 'Disponibil',
+    'rented': 'Închiriat',
+    'maintenance': 'În mentenanță'
+};
 
 type ProductAddProps = {
     open: boolean;
@@ -43,10 +61,10 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
         model: '',
         year: new Date().getFullYear(),
         license_plate: '',
-        color: 'Silver',
+        color: 'Silver', // English color value for backend
         category: 'Sedan',
         daily_rate: 50,
-        status: 'available',
+        status: 'available', // Keep English status for backend compatibility
         features: '',
         image_url: ''
     });
@@ -68,6 +86,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
         const { name, value } = e.target;
 
         if (name === 'status') {
+            // Status values are in English for backend compatibility
             const status = value as 'available' | 'rented' | 'maintenance';
             setFormData({
                 ...formData,
@@ -153,7 +172,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
         try {
             // Validate form
             if (!formData.brand || !formData.model || !formData.license_plate) {
-                setError('Please fill in all required fields (Brand, Model, License Plate)');
+                setError('Vă rugăm să completați toate câmpurile obligatorii (Marcă, Model, Număr de Înmatriculare)');
                 return;
             }
 
@@ -185,7 +204,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                     console.log('Uploaded image path:', filePath);
                 } catch (uploadError) {
                     console.error('Image upload failed:', uploadError);
-                    setError('Failed to upload image. Will continue with default image path.');
+                    setError('Nu s-a putut încărca imaginea. Se va continua cu calea implicită pentru imagine.');
 
                     // If upload fails, generate a consistent path that matches our naming convention
                     const safeBrand = formData.brand.replace(/\s+/g, '-').toLowerCase();
@@ -239,17 +258,17 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                 model: '',
                 year: new Date().getFullYear(),
                 license_plate: '',
-                color: 'Silver',
+                color: 'Silver', // English color value for backend
                 category: 'Sedan',
                 daily_rate: 50,
-                status: 'available',
+                status: 'available', // Keep English status value for backend 
                 features: '',
                 image_url: ''
             });
             setImagePreview(null);
         } catch (err) {
             console.error('Failed to add car:', err);
-            setError('Failed to add car. Please try again.');
+            setError('Nu s-a putut adăuga mașina. Vă rugăm să încercați din nou.');
         } finally {
             setLoading(false);
         }
@@ -257,7 +276,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>Add New Car</DialogTitle>
+            <DialogTitle>Adaugă Mașină Nouă</DialogTitle>
 
             <DialogContent>
                 <Box sx={{ mt: 2 }}>
@@ -265,7 +284,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         <Grid item xs={12} md={6}>
                             <TextField
                                 name="brand"
-                                label="Brand *"
+                                label="Marcă *"
                                 value={formData.brand}
                                 onChange={handleTextChange}
                                 fullWidth
@@ -287,7 +306,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         <Grid item xs={12} md={6}>
                             <TextField
                                 name="year"
-                                label="Year"
+                                label="An"
                                 type="number"
                                 value={formData.year}
                                 onChange={handleNumberChange}
@@ -298,7 +317,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         <Grid item xs={12} md={6}>
                             <TextField
                                 name="license_plate"
-                                label="License Plate *"
+                                label="Număr de Înmatriculare *"
                                 value={formData.license_plate}
                                 onChange={handleTextChange}
                                 fullWidth
@@ -308,27 +327,27 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <FormControl fullWidth sx={{ mb: 2 }}>
-                                <InputLabel>Color</InputLabel>
+                                <InputLabel>Culoare</InputLabel>
                                 <Select
                                     name="color"
                                     value={formData.color || ''}
                                     onChange={handleSelectChange}
-                                    label="Color"
+                                    label="Culoare"
                                 >
-                                    {COLORS.map((color) => (
-                                        <MenuItem key={color} value={color}>
+                                    {COLOR_MAPPING.map((colorOption) => (
+                                        <MenuItem key={colorOption.value} value={colorOption.value}>
                                             <Box display="flex" alignItems="center">
                                                 <Box
                                                     sx={{
                                                         width: 20,
                                                         height: 20,
-                                                        bgcolor: color.toLowerCase(),
+                                                        bgcolor: colorOption.cssColor,
                                                         borderRadius: '50%',
                                                         mr: 1,
                                                         border: '1px solid #ccc'
                                                     }}
                                                 />
-                                                {color}
+                                                {colorOption.display}
                                             </Box>
                                         </MenuItem>
                                     ))}
@@ -337,12 +356,12 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <FormControl fullWidth sx={{ mb: 2 }}>
-                                <InputLabel>Category</InputLabel>
+                                <InputLabel>Categorie</InputLabel>
                                 <Select
                                     name="category"
                                     value={formData.category || ''}
                                     onChange={handleSelectChange}
-                                    label="Category"
+                                    label="Categorie"
                                 >
                                     {CATEGORIES.map((category) => (
                                         <MenuItem key={category} value={category}>{category}</MenuItem>
@@ -353,7 +372,7 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         <Grid item xs={12} md={6}>
                             <TextField
                                 name="daily_rate"
-                                label="Daily Rate"
+                                label="Tarif Zilnic"
                                 type="number"
                                 value={formData.daily_rate}
                                 onChange={handleNumberChange}
@@ -366,15 +385,17 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <FormControl fullWidth sx={{ mb: 2 }}>
-                                <InputLabel>Status</InputLabel>
+                                <InputLabel>Stare</InputLabel>
                                 <Select
                                     name="status"
                                     value={formData.status || ''}
                                     onChange={handleSelectChange}
-                                    label="Status"
+                                    label="Stare"
                                 >
                                     {STATUSES.map((status) => (
-                                        <MenuItem key={status} value={status}>{status}</MenuItem>
+                                        <MenuItem key={status} value={status}>
+                                            {STATUS_TRANSLATIONS[status]}
+                                        </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
@@ -412,49 +433,38 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
                                     <>
                                         <img
                                             src={imagePreview}
-                                            alt="Car preview"
+                                            alt="Previzualizare mașină"
                                             style={{ maxWidth: '100%', maxHeight: 300, marginBottom: 10 }}
                                         />
                                         <Typography variant="body2" color="text.secondary">
-                                            Click to change image
+                                            Faceți clic pentru a schimba imaginea
                                         </Typography>
                                     </>
                                 ) : (
                                     <>
                                         <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
                                         <Typography variant="body1" sx={{ mt: 2 }}>
-                                            Drag & drop an image here or click to browse
+                                            Trageți și plasați o imagine aici sau faceți clic pentru a naviga
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                            Supported formats: JPG, PNG, JPEG, GIF
+                                            Formate acceptate: JPG, PNG, JPEG, GIF
                                         </Typography>
                                     </>
                                 )}
                             </Paper>
-
-                            {/* <TextField
-                                name="image_url"
-                                label="Image Path"
-                                value={formData.image_url || ''}
-                                onChange={handleTextChange}
-                                fullWidth
-                                sx={{ mb: 2 }}
-                                placeholder="src/assets/cars/your-filename.jpg"
-                                helperText="Path where the image should be saved"
-                            /> */}
                         </Grid>
 
                         <Grid item xs={12}>
                             <TextField
                                 name="features"
-                                label="Features"
+                                label="Caracteristici"
                                 multiline
                                 rows={4}
                                 value={formData.features || ''}
                                 onChange={handleTextChange}
                                 fullWidth
-                                placeholder="List car features (e.g., Bluetooth, Navigation, Leather seats)"
-                                helperText="Separate features with commas"
+                                placeholder="Enumerați caracteristicile mașinii (ex: Bluetooth, Navigație, Scaune din piele)"
+                                helperText="Separați caracteristicile prin virgule"
                                 sx={{ mb: 2 }}
                             />
                         </Grid>
@@ -470,14 +480,14 @@ export function ProductAdd({ open, onClose, onSave }: ProductAddProps) {
 
             <DialogActions>
                 <Button onClick={onClose} disabled={loading}>
-                    Cancel
+                    Anulează
                 </Button>
                 <Button
                     onClick={handleSave}
                     variant="contained"
                     disabled={loading}
                 >
-                    {loading ? 'Adding Car...' : 'Add Car'}
+                    {loading ? 'Se adaugă mașina...' : 'Adaugă Mașină'}
                 </Button>
             </DialogActions>
         </Dialog>

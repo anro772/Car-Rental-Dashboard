@@ -184,7 +184,7 @@ export function ProductFilters({
   // Category filter
   const renderCategory = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Category</Typography>
+      <Typography variant="subtitle2">Categorii</Typography>
       <FormGroup>
         {options.categories.map((option) => (
           <FormControlLabel
@@ -209,7 +209,7 @@ export function ProductFilters({
   // Color filter
   const renderColors = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Colors</Typography>
+      <Typography variant="subtitle2">Culori</Typography>
       <ColorPicker
         selected={filters.colors}
         onSelectColor={(colors) => onSetFilters({ colors: colors as string[] })}
@@ -222,7 +222,7 @@ export function ProductFilters({
   // Price filter with ability to unselect
   const renderPrice = (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">Price</Typography>
+      <Typography variant="subtitle2">Preț</Typography>
       <FormGroup>
         {options.price.map((option) => (
           <FormControlLabel
@@ -256,7 +256,7 @@ export function ProductFilters({
         }
         onClick={onOpenFilter}
       >
-        Filters
+        Filtre
       </Button>
 
       <Drawer

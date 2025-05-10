@@ -12,7 +12,7 @@ export function ThemeToggle({ sx }: ThemeToggleProps) {
   const { mode, toggleColorMode } = useColorMode();
 
   return (
-    <Tooltip title={mode === 'light' ? 'Dark mode' : 'Light mode'}>
+    <Tooltip title={mode === 'light' ? 'Mod întunecat' : 'Mod luminos'}>
       <IconButton
         onClick={toggleColorMode}
         color="inherit"

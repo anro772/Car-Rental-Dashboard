@@ -23,7 +23,7 @@ export function NavThemeToggle() {
             }}
         >
             <Box component="span" sx={{ typography: 'body2' }}>
-                {mode === 'dark' ? 'Light mode' : 'Dark mode'}
+                {mode === 'dark' ? 'Mod luminos' : 'Mod întunecat'}
             </Box>
             <ThemeToggle />
         </Box>

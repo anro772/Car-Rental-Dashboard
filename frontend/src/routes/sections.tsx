@@ -51,7 +51,7 @@ export function Router() {
         { element: <HomePage />, index: true },
         { path: 'user', element: <UserPage /> },
         { path: 'cars', element: <ProductsPage /> },
-        { path: 'cars/:id', element: <CarDetailsView /> }, // Add car details route
+        { path: 'cars/:id', element: <CarDetailsView /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'rental', element: <RentalPage /> },
       ],

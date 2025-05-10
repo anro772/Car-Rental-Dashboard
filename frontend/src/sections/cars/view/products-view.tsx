@@ -37,20 +37,20 @@ const getColorHex = (colorName: string | undefined): string => {
 
 // --- Filter/Sort Options ---
 const CATEGORY_OPTIONS = [
-  { value: 'all', label: 'All Categories' }, { value: 'Sedan', label: 'Sedan' },
-  { value: 'SUV', label: 'SUV' }, { value: 'Sports', label: 'Sports' },
-  { value: 'Luxury', label: 'Luxury' }, { value: 'Hatchback', label: 'Hatchback' },
+  { value: 'all', label: 'Toate categoriile' }, { value: 'Sedan', label: 'Sedan' },
+  { value: 'SUV', label: 'SUV' }, { value: 'Sports', label: 'Sport' },
+  { value: 'Luxury', label: 'Lux' }, { value: 'Hatchback', label: 'Hatchback' },
   { value: 'Wagon', label: 'Wagon' },
 ];
 const PRICE_OPTIONS = [
-  { value: 'below', label: 'Below $50/day' }, { value: 'between', label: 'Between $50 - $80/day' },
-  { value: 'above', label: 'Above $80/day' },
+  { value: 'below', label: 'Sub 50 Lei pe zi' }, { value: 'between', label: 'Între 50 - 80 Lei pe zi' },
+  { value: 'above', label: 'Peste 80 Lei pe zi' },
 ];
 const STATUS_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'pending', label: 'Pending' }, // Added pending option
-  { value: 'rented', label: 'Rented' },
-  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'available', label: 'Disponibile' },
+  { value: 'pending', label: 'În așteptare' }, // Added pending option
+  { value: 'rented', label: 'Închiriate' },
+  { value: 'maintenance', label: 'În mentenanță' },
 ];
 const COLOR_OPTIONS = [
   '#FF0000', '#000000', '#FFFFFF', '#C0C0C0', '#0000FF',
@@ -403,9 +403,9 @@ export function ProductsView() {
     <DashboardContent>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 5 }}>
-        <Typography variant="h4">Car Fleet Overview</Typography>
+        <Typography variant="h4">Parc auto</Typography>
         <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => setAddDialogOpen(true)}>
-          Add New Car
+          Adaugă o mașină
         </Button>
       </Box>
 
@@ -424,10 +424,10 @@ export function ProductsView() {
           />
           <ProductSort sortBy={sortBy} onSort={handleSort}
             options={[
-              { value: 'featured', label: 'Featured (Avail.)' }, { value: 'nameAsc', label: 'Name: A-Z' },
-              { value: 'nameDesc', label: 'Name: Z-A' }, { value: 'priceAsc', label: 'Price: Low-High' },
-              { value: 'priceDesc', label: 'Price: High-Low' }, { value: 'countDesc', label: 'Stock: High-Low' },
-              { value: 'countAsc', label: 'Stock: Low-High' },
+              { value: 'featured', label: 'Prezentate (Disp.)' }, { value: 'nameAsc', label: 'Nume: A-Z' },
+              { value: 'nameDesc', label: 'Nume: Z-A' }, { value: 'priceAsc', label: 'Preț: Mic-Mare' },
+              { value: 'priceDesc', label: 'Preț: Mare-Mic' }, { value: 'countDesc', label: 'Stoc: Mare-Mic' },
+              { value: 'countAsc', label: 'Stoc: Mic-Mare' },
             ]}
           />
         </Box>

@@ -16,7 +16,7 @@ export const navData = [
   },
 
   {
-    title: 'Cars',
+    title: 'Mașini',
     path: '/cars',
     icon: icon('ic-car'),
     info: (
@@ -26,18 +26,18 @@ export const navData = [
     ),
   },
   {
-    title: 'Customers',
+    title: 'Clienți',
     path: '/user',
     icon: icon('ic-user'),
   },
   {
-    title: 'Rentals',
+    title: 'Închirieri',
     path: '/rental',
     icon: icon('ic-rental'),
   },
-  {
-    title: 'Blog',
-    path: '/blog',
-    icon: icon('ic-blog'),
-  },
+  // {
+  //   title: 'Blog',
+  //   path: '/blog',
+  //   icon: icon('ic-blog'),
+  // },
 ];

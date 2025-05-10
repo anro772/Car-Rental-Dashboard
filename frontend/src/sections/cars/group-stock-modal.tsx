@@ -163,7 +163,7 @@ export function GroupStockModal({
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
             <DialogTitle>
-                Stock Details: {groupName}
+                Detalii stoc: {groupName}
                 <IconButton
                     aria-label="close"
                     onClick={onClose}
@@ -176,7 +176,7 @@ export function GroupStockModal({
             <DialogContent dividers>
                 {cars.length === 0 ? (
                     <Typography sx={{ textAlign: 'center', py: 3 }}>
-                        No individual cars found for this group.
+                        Nu s-au găsit mașini individuale pentru acest grup.
                     </Typography>
                 ) : (
                     <>
@@ -184,7 +184,7 @@ export function GroupStockModal({
                             <Box display="flex" justifyContent="center" my={2}>
                                 <CircularProgress size={24} />
                                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                    Loading rental data...
+                                    Încărcarea datelor de închiriere...
                                 </Typography>
                             </Box>
                         )}
@@ -193,11 +193,11 @@ export function GroupStockModal({
                             <Table size="small">
                                 <TableHead sx={{ bgcolor: 'background.neutral' }}>
                                     <TableRow>
-                                        <TableCell>License Plate</TableCell>
-                                        <TableCell>Color</TableCell>
+                                        <TableCell>Plăcuță de înmatriculare</TableCell>
+                                        <TableCell>Culoare</TableCell>
                                         <TableCell>Status</TableCell>
-                                        <TableCell align="right">Daily Rate</TableCell>
-                                        <TableCell align="center">Actions</TableCell>
+                                        <TableCell align="right">Rata zilnică</TableCell>
+                                        <TableCell align="center">Acțiuni</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -270,7 +270,7 @@ export function GroupStockModal({
                             return displayStatus.status === 'rented' || displayStatus.status === 'pending';
                         }) && (
                                 <Typography variant="caption" color="error" sx={{ display: 'block', mt: 2 }}>
-                                    * Cars with status "rented" or "pending" cannot be deleted. They must be returned or have their reservation completed first.
+                                    * Mașinile cu statutul „închiriat” sau „în așteptare” nu pot fi șterse. Acestea trebuie mai întâi returnate sau rezervarea lor trebuie completată.
                                 </Typography>
                             )}
                     </>
@@ -278,7 +278,7 @@ export function GroupStockModal({
             </DialogContent>
 
             <DialogActions>
-                <Button onClick={onClose}>Close</Button>
+                <Button onClick={onClose}>Închide</Button>
             </DialogActions>
         </Dialog>
     );

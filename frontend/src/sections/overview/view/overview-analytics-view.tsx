@@ -1,4 +1,13 @@
-// src/sections/overview/view/overview-analytics-view.tsx
+// Translation mappings for UI display (preserving backend values)
+const STATUS_TRANSLATIONS: Record<string, string> = {
+  'active': 'Activ',
+  'pending': 'În așteptare',
+  'completed': 'Finalizat',
+  'cancelled': 'Anulat',
+  'overdue': 'Depășit',
+  'upcoming': 'Viitor',
+  'all': 'Toate'
+};// src/sections/overview/view/overview-analytics-view.tsx
 import { useState, useEffect } from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
 import Typography from '@mui/material/Typography';
@@ -54,6 +63,20 @@ import { generateReport } from 'src/services/reportService';
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
+
+
+
+const PAYMENT_STATUS_TRANSLATIONS: Record<string, string> = {
+  'unpaid': 'Neplătit',
+  'partial': 'Parțial',
+  'paid': 'Plătit'
+};
+
+const CAR_STATUS_TRANSLATIONS: Record<string, string> = {
+  'available': 'Disponibil',
+  'rented': 'Închiriat',
+  'maintenance': 'În mentenanță'
+};
 
 // Define types for the dashboard data
 interface DashboardData {
@@ -179,15 +202,15 @@ export function OverviewAnalyticsView() {
             const customer = await customersService.getCustomer(id);
             customersMap[id] = customer;
           } catch (err) {
-            console.error(`Failed to fetch customer ${id}:`, err);
+            console.error(`Eroare la preluarea datelor clientului ${id}:`, err);
           }
         }
 
         setCustomers(customersMap);
         setError('');
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again.');
+        console.error('Eroare la încărcarea datelor dashboard:', err);
+        setError('Nu s-au putut încărca datele. Vă rugăm să încercați din nou.');
       } finally {
         setLoading(false);
       }
@@ -256,7 +279,7 @@ export function OverviewAnalyticsView() {
         severity: 'success'
       });
     } catch (err) {
-      console.error('Failed to generate report:', err);
+      console.error('Nu s-a putut genera raportul:', err);
       setSnackbar({
         open: true,
         message: 'Nu s-a putut genera raportul. Încercați din nou mai târziu.',
@@ -299,7 +322,7 @@ export function OverviewAnalyticsView() {
     try {
       const customer = customers[rental.customer_id];
       if (!customer) {
-        throw new Error('Customer data not found');
+        throw new Error('Datele clientului nu au fost găsite');
       }
 
       await contractService.downloadContract(customer, rental);
@@ -310,7 +333,7 @@ export function OverviewAnalyticsView() {
         severity: 'success'
       });
     } catch (err) {
-      console.error('Failed to download contract:', err);
+      console.error('Nu s-a putut descărca contractul:', err);
       setSnackbar({
         open: true,
         message: 'Nu s-a putut descărca contractul. Încercați din nou mai târziu.',
@@ -323,7 +346,7 @@ export function OverviewAnalyticsView() {
     try {
       const customer = customers[rental.customer_id];
       if (!customer) {
-        throw new Error('Customer data not found');
+        throw new Error('Datele clientului nu au fost găsite');
       }
 
       await invoiceService.downloadInvoice(customer, rental);
@@ -334,7 +357,7 @@ export function OverviewAnalyticsView() {
         severity: 'success'
       });
     } catch (err) {
-      console.error('Failed to download invoice:', err);
+      console.error('Nu s-a putut descărca factura:', err);
       setSnackbar({
         open: true,
         message: 'Nu s-a putut descărca factura. Încercați din nou mai târziu.',
@@ -419,8 +442,8 @@ export function OverviewAnalyticsView() {
   return (
     <DashboardContent>
       <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 500 }}>
-          Car Rental Dashboard
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          Dashboard pentru flota de mașini
         </Typography>
         <Button
           variant="contained"
@@ -428,7 +451,7 @@ export function OverviewAnalyticsView() {
           onClick={handleOpenReportDialog}
           disabled={generatingReport}
         >
-          {generatingReport ? 'Se generează...' : 'Obținere Rapoarte Zilnice'}
+          {generatingReport ? 'Se generează...' : 'Generare rapoarte'}
         </Button>
       </Box>
 
@@ -626,7 +649,7 @@ export function OverviewAnalyticsView() {
                               <TableCell>{fDate(rental.end_date)}</TableCell>
                               <TableCell>
                                 <Chip
-                                  label={rental.status}
+                                  label={STATUS_TRANSLATIONS[rental.status] || rental.status}
                                   color={rental.status === 'active' ? 'success' : 'warning'}
                                   size="small"
                                 />
@@ -654,6 +677,7 @@ export function OverviewAnalyticsView() {
                     onPageChange={handleContractPageChange}
                     rowsPerPage={rowsPerPage}
                     rowsPerPageOptions={[10]}
+                    labelRowsPerPage="Rânduri pe pagină:"
                     sx={{ px: 3 }}
                   />
                 </>
@@ -735,7 +759,7 @@ export function OverviewAnalyticsView() {
                               <TableCell>{fDate(rental.end_date)}</TableCell>
                               <TableCell>
                                 <Chip
-                                  label={rental.payment_status}
+                                  label={PAYMENT_STATUS_TRANSLATIONS[rental.payment_status] || rental.payment_status}
                                   color={rental.payment_status === 'paid' ? 'success' : 'warning'}
                                   size="small"
                                 />
@@ -763,6 +787,7 @@ export function OverviewAnalyticsView() {
                     onPageChange={handleInvoicePageChange}
                     rowsPerPage={rowsPerPage}
                     rowsPerPageOptions={[10]}
+                    labelRowsPerPage="Rânduri pe pagină:"
                     sx={{ px: 3 }}
                   />
                 </>

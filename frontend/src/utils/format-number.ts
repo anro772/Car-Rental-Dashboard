@@ -7,7 +7,8 @@ export type InputNumberValue = string | number | null | undefined;
 
 type Options = Intl.NumberFormatOptions | undefined;
 
-const DEFAULT_LOCALE = { code: 'en-US', currency: 'USD' };
+// Updated to Romanian locale and currency
+const DEFAULT_LOCALE = { code: 'ro-RO', currency: 'RON' };
 
 function processInput(inputValue: InputNumberValue): number | null {
   if (inputValue == null || Number.isNaN(inputValue)) return null;
@@ -39,6 +40,7 @@ export function fCurrency(inputValue: InputNumberValue, options?: Options) {
   const number = processInput(inputValue);
   if (number === null) return '';
 
+  // Use Romanian currency format
   const fm = new Intl.NumberFormat(locale.code, {
     style: 'currency',
     currency: locale.currency,
@@ -47,6 +49,7 @@ export function fCurrency(inputValue: InputNumberValue, options?: Options) {
     ...options,
   }).format(number);
 
+  // Romanian default format already includes "Lei" after the amount
   return fm;
 }
 

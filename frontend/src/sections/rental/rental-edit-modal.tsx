@@ -25,6 +25,20 @@ import { Iconify } from 'src/components/iconify';
 import rentalsService, { RentalExtended, UpdateRental } from 'src/services/rentalsService';
 import carsService, { Car } from 'src/services/carsService';
 
+// Translation mappings for UI display (preserving backend values)
+const STATUS_TRANSLATIONS: Record<string, string> = {
+    'pending': 'În așteptare',
+    'active': 'Activ',
+    'completed': 'Finalizat',
+    'cancelled': 'Anulat'
+};
+
+const PAYMENT_STATUS_TRANSLATIONS: Record<string, string> = {
+    'unpaid': 'Neplătit',
+    'partial': 'Parțial',
+    'paid': 'Plătit'
+};
+
 // ----------------------------------------------------------------------
 
 // Helper function to get color hex
@@ -51,7 +65,7 @@ const getColorHex = (colorName: string | undefined): string => {
 type RentalEditModalProps = {
     open: boolean;
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (updatedRental: RentalExtended) => void;
     rental: RentalExtended | null;
 };
 
@@ -122,7 +136,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
             }
         } catch (err) {
             console.error('Failed to load car data:', err);
-            setError('Failed to load car data for price calculation.');
+            setError('Nu s-au putut încărca datele mașinii pentru calculul prețului.');
         } finally {
             setLoading(false);
         }
@@ -160,6 +174,11 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
         }
     }, [selectedCar, rentalData.start_date, rentalData.end_date]);
 
+    // Debug current rental data to verify status is tracked correctly
+    useEffect(() => {
+        console.log('Current rental data:', rentalData);
+    }, [rentalData]);
+
     // Input change handlers
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -190,10 +209,13 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
         const { name, value } = e.target;
 
         if (name) {
-            setRentalData(prev => ({
-                ...prev,
-                [name]: value
-            }));
+            console.log(`Select changed - name: ${name}, value: ${value}`);
+
+            setRentalData(prev => {
+                const newData = { ...prev, [name]: value };
+                console.log('New rental data after select change:', newData);
+                return newData;
+            });
 
             // Clear error when field is changed
             if (formErrors[name]) {
@@ -210,22 +232,22 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
         const errors: Record<string, string> = {};
 
         if (!rentalData.start_date) {
-            errors.start_date = 'Start date is required';
+            errors.start_date = 'Data de început este obligatorie';
         }
 
         if (!rentalData.end_date) {
-            errors.end_date = 'End date is required';
+            errors.end_date = 'Data de sfârșit este obligatorie';
         } else if (rentalData.start_date && rentalData.end_date) {
             const start = new Date(rentalData.start_date);
             const end = new Date(rentalData.end_date);
 
             if (end < start) {
-                errors.end_date = 'End date must be after start date';
+                errors.end_date = 'Data de sfârșit trebuie să fie după data de început';
             }
         }
 
         if (!rentalData.total_cost || rentalData.total_cost <= 0) {
-            errors.total_cost = 'Total cost is required and must be greater than 0';
+            errors.total_cost = 'Costul total este obligatoriu și trebuie să fie mai mare decât 0';
         }
 
         setFormErrors(errors);
@@ -251,6 +273,11 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
             const originalStatus = rental.status;
             const originalPaymentStatus = rental.payment_status;
 
+            console.log('Original status:', originalStatus);
+            console.log('New status:', dataToSubmit.status);
+            console.log('Original payment:', originalPaymentStatus);
+            console.log('New payment:', dataToSubmit.payment_status);
+
             // First update the main rental data (dates, cost, notes)
             const baseUpdateData = {
                 start_date: dataToSubmit.start_date,
@@ -259,29 +286,44 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                 notes: dataToSubmit.notes
             };
 
-            await rentalsService.updateRental(rental.id, baseUpdateData);
+            let updatedRental = await rentalsService.updateRental(rental.id, baseUpdateData);
 
             // If status has changed, update it separately
             if (dataToSubmit.status && dataToSubmit.status !== originalStatus) {
-                await rentalsService.updateRentalStatus(rental.id, dataToSubmit.status);
+                console.log('Updating status to:', dataToSubmit.status);
+                updatedRental = await rentalsService.updateRentalStatus(rental.id, dataToSubmit.status);
             }
 
             // If payment status has changed, update it separately
             if (dataToSubmit.payment_status && dataToSubmit.payment_status !== originalPaymentStatus) {
-                await rentalsService.updatePaymentStatus(rental.id, dataToSubmit.payment_status);
+                console.log('Updating payment status to:', dataToSubmit.payment_status);
+                updatedRental = await rentalsService.updatePaymentStatus(rental.id, dataToSubmit.payment_status);
             }
 
-            // Close modal and trigger refresh
-            onSuccess();
+            // Create a combined updated rental object for passing back to parent
+            const fullUpdatedRental: RentalExtended = {
+                ...rental,
+                ...baseUpdateData,
+                ...updatedRental,
+                // Ensure the status and payment_status reflect what was selected in the form
+                // even if the API response doesn't include them
+                status: dataToSubmit.status || updatedRental.status || rental.status,
+                payment_status: dataToSubmit.payment_status || updatedRental.payment_status || rental.payment_status
+            };
+
+            // Call the success callback with the updated rental
+            onSuccess(fullUpdatedRental);
+
+            // Close the modal
             onClose();
         } catch (err: any) {
             console.error('Failed to update rental:', err);
             if (err.response?.status === 500) {
-                setError('Server error: Failed to update rental. Please try again or contact support.');
+                setError('Eroare server: Nu s-a putut actualiza închirierea. Încercați din nou sau contactați asistența.');
             } else if (err.response?.data?.error?.includes('Car is already booked')) {
-                setError('This date range conflicts with another booking.');
+                setError('Această perioadă intră în conflict cu o altă rezervare.');
             } else {
-                setError('Failed to update rental. Please check your input and try again.');
+                setError('Nu s-a putut actualiza închirierea. Verificați datele introduse și încercați din nou.');
             }
         } finally {
             setSubmitting(false);
@@ -296,7 +338,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>
-                Edit Rental
+                Editare Închiriere
                 <IconButton
                     aria-label="close"
                     onClick={onClose}
@@ -320,7 +362,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
 
                 {isNonEditable && (
                     <Alert severity="warning" sx={{ mb: 3, mt: 2 }}>
-                        This rental is {isCompleted ? 'completed' : 'cancelled'} and most fields cannot be edited.
+                        Această închiriere este {isCompleted ? 'finalizată' : 'anulată'} și majoritatea câmpurilor nu pot fi editate.
                     </Alert>
                 )}
 
@@ -335,7 +377,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Car"
+                                    label="Mașină"
                                     value={carColor
                                         ? `${rental?.brand} ${rental?.model} - ${rental?.license_plate} (${carColor})`
                                         : `${rental?.brand} ${rental?.model} - ${rental?.license_plate}`
@@ -369,7 +411,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Customer"
+                                    label="Client"
                                     value={rental?.customer_name || ''}
                                     disabled
                                     InputProps={{
@@ -386,7 +428,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Start Date"
+                                    label="Data de Început"
                                     name="start_date"
                                     type="date"
                                     value={rentalData.start_date || ''}
@@ -401,7 +443,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="End Date"
+                                    label="Data de Sfârșit"
                                     name="end_date"
                                     type="date"
                                     value={rentalData.end_date || ''}
@@ -425,28 +467,31 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                                         onChange={handleSelectChange}
                                         disabled={submitting || isNonEditable}
                                     >
-                                        <MenuItem value="pending">Pending</MenuItem>
-                                        <MenuItem value="active">Active</MenuItem>
-                                        <MenuItem value="completed">Completed</MenuItem>
-                                        <MenuItem value="cancelled">Cancelled</MenuItem>
+                                        <MenuItem value="pending">{STATUS_TRANSLATIONS['pending']}</MenuItem>
+                                        <MenuItem value="active">{STATUS_TRANSLATIONS['active']}</MenuItem>
+                                        <MenuItem value="completed">{STATUS_TRANSLATIONS['completed']}</MenuItem>
+                                        <MenuItem value="cancelled">{STATUS_TRANSLATIONS['cancelled']}</MenuItem>
                                     </Select>
                                 </FormControl>
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                    Status curent: {rentalData.status ? STATUS_TRANSLATIONS[rentalData.status as keyof typeof STATUS_TRANSLATIONS] || rentalData.status : '-'}
+                                </Typography>
                             </Grid>
 
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth>
-                                    <InputLabel id="payment-status-label">Payment Status</InputLabel>
+                                    <InputLabel id="payment-status-label">Status Plată</InputLabel>
                                     <Select
                                         labelId="payment-status-label"
                                         name="payment_status"
                                         value={rentalData.payment_status || ''}
-                                        label="Payment Status"
+                                        label="Status Plată"
                                         onChange={handleSelectChange}
                                         disabled={submitting}
                                     >
-                                        <MenuItem value="unpaid">Unpaid</MenuItem>
-                                        <MenuItem value="partial">Partial</MenuItem>
-                                        <MenuItem value="paid">Paid</MenuItem>
+                                        <MenuItem value="unpaid">{PAYMENT_STATUS_TRANSLATIONS['unpaid']}</MenuItem>
+                                        <MenuItem value="partial">{PAYMENT_STATUS_TRANSLATIONS['partial']}</MenuItem>
+                                        <MenuItem value="paid">{PAYMENT_STATUS_TRANSLATIONS['paid']}</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>
@@ -455,19 +500,19 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Total Cost"
+                                    label="Cost Total"
                                     name="total_cost"
                                     type="number"
                                     value={rentalData.total_cost || ''}
                                     onChange={handleInputChange}
                                     disabled={submitting || isNonEditable}
                                     InputProps={{
-                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                        startAdornment: <InputAdornment position="start">Lei</InputAdornment>,
                                     }}
                                     error={!!formErrors.total_cost}
                                     helperText={formErrors.total_cost || (
                                         selectedCar && !isNonEditable ?
-                                            `Calculated: $${calculatedTotal} (${selectedCar.daily_rate}/day)` :
+                                            `Calculat: ${calculatedTotal} Lei (${selectedCar.daily_rate}/zi)` :
                                             ''
                                     )}
                                 />
@@ -476,7 +521,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Notes"
+                                    label="Note"
                                     name="notes"
                                     multiline
                                     rows={2}
@@ -492,7 +537,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
 
             <DialogActions>
                 <Button onClick={onClose} disabled={submitting}>
-                    Cancel
+                    Anulează
                 </Button>
                 <Button
                     onClick={handleSubmit}
@@ -500,7 +545,7 @@ export function RentalEditModal({ open, onClose, onSuccess, rental }: RentalEdit
                     disabled={submitting || loading}
                     startIcon={submitting ? <CircularProgress size={20} /> : null}
                 >
-                    {submitting ? 'Updating...' : 'Update Rental'}
+                    {submitting ? 'Se actualizează...' : 'Actualizează Închirierea'}
                 </Button>
             </DialogActions>
         </Dialog>

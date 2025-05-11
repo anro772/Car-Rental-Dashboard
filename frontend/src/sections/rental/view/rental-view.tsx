@@ -31,6 +31,24 @@ import { RentalAddModal } from '../rental-add-modal';
 
 import rentalsService, { RentalExtended } from 'src/services/rentalsService';
 import customersService, { Customer } from 'src/services/customersService';
+import { fDate } from 'src/utils/format-time';
+
+// Translation mappings for UI display (preserving backend values)
+const STATUS_TRANSLATIONS: Record<string, string> = {
+    'active': 'Activ',
+    'pending': 'În așteptare',
+    'completed': 'Finalizat',
+    'cancelled': 'Anulat',
+    'overdue': 'Depășit',
+    'upcoming': 'Viitor',
+    'all': 'Toate'
+};
+
+const PAYMENT_TRANSLATIONS: Record<string, string> = {
+    'unpaid': 'Neplătit',
+    'partial': 'Parțial',
+    'paid': 'Plătit'
+};
 
 // ----------------------------------------------------------------------
 
@@ -72,7 +90,7 @@ export function RentalView() {
                 })
                 .catch(err => {
                     console.error('Failed to fetch customer:', err);
-                    setError('Could not load customer information');
+                    setError('Nu s-au putut încărca informațiile clientului');
                 });
 
             // Reset to 'all' tab when a customer is selected
@@ -111,7 +129,7 @@ export function RentalView() {
                     data = await rentalsService.getRentalsForCustomer(customerId);
                 } catch (err) {
                     console.error(`Failed to fetch rentals for customer ${customerId}:`, err);
-                    setError('Could not load customer rentals');
+                    setError('Nu s-au putut încărca închirierile clientului');
                 }
             } else {
                 // Otherwise fetch based on the selected tab
@@ -152,68 +170,16 @@ export function RentalView() {
                     setError(''); // Clear any previous errors
                 } catch (err) {
                     console.error(`Failed to fetch ${activeTab} rentals:`, err);
-                    setError(`Could not load ${activeTab} rentals`);
+                    setError(`Nu s-au putut încărca închirierile ${STATUS_TRANSLATIONS[activeTab].toLowerCase()}`);
                 }
             }
 
             setRentals(data);
         } catch (err) {
             console.error('Failed to fetch rentals:', err);
-            setError('Could not load rentals');
+            setError('Nu s-au putut încărca închirierile');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleExportCSV = () => {
-        try {
-            // Get selected rentals
-            const selectedRentals = rentals.filter(rental =>
-                table.selected.includes(rental.id.toString())
-            );
-
-            if (selectedRentals.length === 0) return;
-
-            // Define CSV headers
-            const headers = [
-                'ID', 'Car', 'License Plate', 'Customer', 'Start Date', 'End Date',
-                'Status', 'Payment Status', 'Total Cost', 'Notes'
-            ];
-
-            // Map rental data to CSV rows
-            const rows = selectedRentals.map(rental => [
-                rental.id,
-                `${rental.brand} ${rental.model}`,
-                rental.license_plate,
-                rental.customer_name,
-                rental.start_date,
-                rental.end_date,
-                rental.status,
-                rental.payment_status,
-                rental.total_cost,
-                rental.notes || ''
-            ]);
-
-            // Add headers to the beginning
-            const csvData = [headers, ...rows];
-
-            // Convert to CSV string
-            const csvContent = csvData.map(row => row.join(',')).join('\n');
-
-            // Create download
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', `rentals_export_${new Date().toISOString().split('T')[0]}.csv`);
-            link.click();
-
-            // Clean up
-            URL.revokeObjectURL(url);
-            showSnackbar('Export completed successfully', 'success');
-        } catch (err) {
-            console.error('Failed to export CSV:', err);
-            showSnackbar('Failed to export data to CSV', 'error');
         }
     };
 
@@ -221,10 +187,10 @@ export function RentalView() {
         try {
             await rentalsService.deleteRental(id);
             setRentals(rentals.filter(rental => rental.id !== id));
-            showSnackbar('Rental deleted successfully', 'success');
+            showSnackbar('Închirierea a fost ștearsă cu succes', 'success');
         } catch (err) {
             console.error('Failed to delete rental:', err);
-            showSnackbar('Failed to delete rental. It may be active.', 'error');
+            showSnackbar('Nu s-a putut șterge închirierea. Este posibil să fie activă.', 'error');
         }
     };
 
@@ -243,23 +209,29 @@ export function RentalView() {
             // Clear selected rows
             table.onSelectAllRows(false, []);
 
-            showSnackbar(`${ids.length} rentals deleted successfully`, 'success');
+            showSnackbar(`${ids.length} închirieri șterse cu succes`, 'success');
         } catch (err) {
             console.error('Failed to delete rentals:', err);
-            showSnackbar('Failed to delete one or more rentals. Some may be active.', 'error');
+            showSnackbar('Nu s-au putut șterge una sau mai multe închirieri. Unele ar putea fi active.', 'error');
         }
     };
 
     const handleUpdateRentalStatus = async (id: number, status: RentalExtended['status']) => {
         try {
+            console.log(`Updating rental ${id} status to: ${status}`);
             const updatedRental = await rentalsService.updateRentalStatus(id, status);
+
+            // Apply the update to our local state
             setRentals(rentals.map(rental =>
-                rental.id === id ? updatedRental : rental
+                rental.id === id ? { ...rental, ...updatedRental } : rental
             ));
-            showSnackbar(`Rental status updated to ${status}`, 'success');
+
+            // Show success message with translated status
+            const translatedStatus = STATUS_TRANSLATIONS[status] || status;
+            showSnackbar(`Status-ul închirierii a fost actualizat la ${translatedStatus}`, 'success');
         } catch (err) {
             console.error('Failed to update rental status:', err);
-            showSnackbar('Failed to update rental status', 'error');
+            showSnackbar('Nu s-a putut actualiza status-ul închirierii', 'error');
         }
     };
 
@@ -269,10 +241,10 @@ export function RentalView() {
             setRentals(rentals.map(rental =>
                 rental.id === id ? updatedRental : rental
             ));
-            showSnackbar(`Payment status updated to ${paymentStatus}`, 'success');
+            showSnackbar(`Status-ul plății a fost actualizat la ${PAYMENT_TRANSLATIONS[paymentStatus]}`, 'success');
         } catch (err) {
             console.error('Failed to update payment status:', err);
-            showSnackbar('Failed to update payment status', 'error');
+            showSnackbar('Nu s-a putut actualiza status-ul plății', 'error');
         }
     };
 
@@ -309,8 +281,8 @@ export function RentalView() {
             <Box display="flex" alignItems="center" mb={3}>
                 <Typography variant="h4" flexGrow={1}>
                     {customer
-                        ? `Rentals for ${customer.first_name} ${customer.last_name}`
-                        : 'Rentals'}
+                        ? `Închirieri pentru ${customer.first_name} ${customer.last_name}`
+                        : 'Închirieri'}
                 </Typography>
 
                 {customer && (
@@ -322,7 +294,7 @@ export function RentalView() {
                             onClick={handleGoBack}
                             sx={{ mr: 1 }}
                         >
-                            Back to Customers
+                            Înapoi la Clienți
                         </Button>
                         <Button
                             variant="outlined"
@@ -331,7 +303,7 @@ export function RentalView() {
                             onClick={handleClearCustomerFilter}
                             sx={{ mr: 1 }}
                         >
-                            All Rentals
+                            Toate Închirierile
                         </Button>
                     </>
                 )}
@@ -341,7 +313,7 @@ export function RentalView() {
                     startIcon={<Iconify icon="mingcute:add-line" />}
                     onClick={() => setOpenRentalModal(true)}
                 >
-                    New Rental
+                    Închiriere Nouă
                 </Button>
             </Box>
 
@@ -353,13 +325,13 @@ export function RentalView() {
                     textColor="primary"
                     indicatorColor="primary"
                 >
-                    <Tab value="all" label="All Rentals" />
+                    <Tab value="all" label="Toate Închirierile" />
                     <Tab value="active" label="Active" />
-                    <Tab value="pending" label="Pending" />
-                    <Tab value="completed" label="Completed" />
-                    <Tab value="cancelled" label="Cancelled" />
-                    <Tab value="overdue" label="Overdue" />
-                    <Tab value="upcoming" label="Upcoming" />
+                    <Tab value="pending" label="În Așteptare" />
+                    <Tab value="completed" label="Finalizate" />
+                    <Tab value="cancelled" label="Anulate" />
+                    <Tab value="overdue" label="Depășite" />
+                    <Tab value="upcoming" label="Viitoare" />
                 </Tabs>
             )}
 
@@ -371,7 +343,7 @@ export function RentalView() {
 
             {customer && (
                 <Alert severity="info" sx={{ mb: 3 }}>
-                    Showing rentals for customer: {customer.first_name} {customer.last_name} ({customer.email})
+                    Se afișează închirierile pentru clientul: {customer.first_name} {customer.last_name} ({customer.email})
                 </Alert>
             )}
 
@@ -385,7 +357,7 @@ export function RentalView() {
                     }}
                     onBulkDelete={handleBulkDelete}
                     selectedIds={table.selected}
-                    onExportCSV={handleExportCSV}
+                    rentals={rentals} // Pass the full rentals data to the toolbar
                 />
 
                 <RentalAddModal
@@ -411,14 +383,14 @@ export function RentalView() {
                                     )
                                 }
                                 headLabel={[
-                                    { id: 'car', label: 'Car' },
+                                    { id: 'car', label: 'Mașină' },
                                     // Only show customer column if not filtered by customer
-                                    ...(customerId ? [] : [{ id: 'customer', label: 'Customer' }]),
-                                    { id: 'start_date', label: 'Start Date' },
-                                    { id: 'end_date', label: 'End Date' },
+                                    ...(customerId ? [] : [{ id: 'customer', label: 'Client' }]),
+                                    { id: 'start_date', label: 'Data început' },
+                                    { id: 'end_date', label: 'Data sfârșit' },
                                     { id: 'status', label: 'Status' },
-                                    { id: 'payment_status', label: 'Payment' },
-                                    { id: 'total_cost', label: 'Total Cost', align: 'right' },
+                                    { id: 'payment_status', label: 'Plată' },
+                                    { id: 'total_cost', label: 'Cost total', align: 'right' },
                                     { id: '' },
                                 ]}
                             />
@@ -452,20 +424,20 @@ export function RentalView() {
                                         <td colSpan={customerId ? 7 : 8} style={{ textAlign: 'center', padding: '40px 0' }}>
                                             {customerId ? (
                                                 <>
-                                                    <Typography variant="h6" sx={{ mb: 1 }}>No rentals found</Typography>
+                                                    <Typography variant="h6" sx={{ mb: 1 }}>Nu s-au găsit închirieri</Typography>
                                                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                                        This customer doesn't have any rentals yet.
+                                                        Acest client nu are încă nicio închiriere.
                                                     </Typography>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Typography variant="h6" sx={{ mb: 1 }}>No rentals found</Typography>
+                                                    <Typography variant="h6" sx={{ mb: 1 }}>Nu s-au găsit închirieri</Typography>
                                                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                                                         {activeTab === 'all'
-                                                            ? 'There are no rentals in the system yet.'
+                                                            ? 'Nu există încă închirieri în sistem.'
                                                             : activeTab === 'overdue'
-                                                                ? 'Great news! There are no overdue rentals.'
-                                                                : `No ${activeTab} rentals found.`}
+                                                                ? 'Vești bune! Nu există închirieri depășite.'
+                                                                : `Nu s-au găsit închirieri ${STATUS_TRANSLATIONS[activeTab].toLowerCase()}e.`}
                                                     </Typography>
                                                 </>
                                             )}

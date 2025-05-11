@@ -29,6 +29,20 @@ import { fCurrency } from 'src/utils/format-number';
 
 import { RentalEditModal } from './rental-edit-modal';
 
+// Translation mappings for UI display (preserving backend values)
+const STATUS_TRANSLATIONS: Record<string, string> = {
+    'pending': 'În așteptare',
+    'active': 'Activ',
+    'completed': 'Finalizat',
+    'cancelled': 'Anulat'
+};
+
+const PAYMENT_STATUS_TRANSLATIONS: Record<string, string> = {
+    'unpaid': 'Neplătit',
+    'partial': 'Parțial',
+    'paid': 'Plătit'
+};
+
 // ----------------------------------------------------------------------
 
 // Helper function to get color hex
@@ -154,8 +168,18 @@ export function RentalTableRow({
     const handleUpdatePayment = (newStatus: RentalExtended['payment_status']) => { onUpdatePayment(newStatus); handleClosePaymentMenu(); };
     const handleImageError = () => setCarImage('/assets/car-placeholder.png');
 
-    const handleEditSuccess = () => {
-        onUpdateStatus(status);
+    const handleEditSuccess = (updatedRental: RentalExtended) => {
+        console.log('Edit was successful, applying updated rental data:', updatedRental);
+
+        // Update with the new status passed from the edit modal
+        if (updatedRental.status) {
+            onUpdateStatus(updatedRental.status);
+        }
+
+        // Also update payment status if it was changed
+        if (updatedRental.payment_status && updatedRental.payment_status !== payment_status) {
+            onUpdatePayment(updatedRental.payment_status);
+        }
     };
 
     // Generate and download contract
@@ -267,7 +291,7 @@ export function RentalTableRow({
                     <Stack direction="row" alignItems="center" spacing={0.5}>
                         {fDate(end_date)}
                         {days_overdue && days_overdue > 0 && (
-                            <Chip size="small" color="error" label={`${days_overdue} days overdue`} variant="outlined" />
+                            <Chip size="small" color="error" label={`${days_overdue} zile întârziere`} variant="outlined" />
                         )}
                     </Stack>
                 </TableCell>
@@ -275,7 +299,7 @@ export function RentalTableRow({
                 {/* Status Chip */}
                 <TableCell>
                     <Chip
-                        label={status}
+                        label={status && STATUS_TRANSLATIONS[status] ? STATUS_TRANSLATIONS[status] : status}
                         color={getStatusColor(status)}
                         size="small"
                         onClick={handleOpenStatusMenu}
@@ -289,7 +313,8 @@ export function RentalTableRow({
                 {/* Payment Status Chip */}
                 <TableCell>
                     <Chip
-                        label={payment_status}
+                        label={payment_status && PAYMENT_STATUS_TRANSLATIONS[payment_status] ?
+                            PAYMENT_STATUS_TRANSLATIONS[payment_status] : payment_status}
                         color={getPaymentColor(payment_status)}
                         size="small"
                         onClick={handleOpenPaymentMenu}
@@ -317,44 +342,58 @@ export function RentalTableRow({
                 slotProps={{ paper: { sx: { width: 180 } } }}
             >
                 <MenuItem onClick={handleEditRental} disabled={status === 'completed' || status === 'cancelled'}>
-                    <Iconify icon="eva:edit-fill" sx={{ mr: 2 }} />Edit
+                    <Iconify icon="eva:edit-fill" sx={{ mr: 2 }} />Editează
                 </MenuItem>
                 {!hideCustomerColumn && (
                     <MenuItem onClick={handleViewCustomerRentals}>
-                        <Iconify icon="mdi:account" sx={{ mr: 2 }} />Customer
+                        <Iconify icon="mdi:account" sx={{ mr: 2 }} />Client
                     </MenuItem>
                 )}
                 <MenuItem onClick={handleViewCar}>
-                    <Iconify icon="eva:car-fill" sx={{ mr: 2 }} />Car
+                    <Iconify icon="eva:car-fill" sx={{ mr: 2 }} />Mașină
                 </MenuItem>
                 <MenuItem onClick={handleGenerateContract}>
                     <Iconify icon="mdi:file-document-outline" sx={{ mr: 2 }} />
-                    Afisare contract
+                    Afișare contract
                 </MenuItem>
                 {status === 'completed' && (
                     <MenuItem onClick={handleGenerateInvoice}>
                         <Iconify icon="mdi:receipt" sx={{ mr: 2 }} />
-                        Descarca factura
+                        Descarcă factură
                     </MenuItem>
                 )}
                 <MenuItem onClick={onDeleteRow} sx={{ color: 'error.main' }} disabled={status === 'active'}>
-                    <Iconify icon="eva:trash-2-outline" sx={{ mr: 2 }} />Delete
+                    <Iconify icon="eva:trash-2-outline" sx={{ mr: 2 }} />Șterge
                 </MenuItem>
             </Popover>
 
             {/* Menu for Status Update */}
             <Menu anchorEl={openStatusMenu} open={!!openStatusMenu} onClose={handleCloseStatusMenu}>
-                <MenuItem onClick={() => handleUpdateStatus('pending')} disabled={status === 'pending' || status === 'completed'}><ListItemText primary="Pending" /></MenuItem>
-                <MenuItem onClick={() => handleUpdateStatus('active')} disabled={status === 'active' || status === 'completed'}><ListItemText primary="Active" /></MenuItem>
-                <MenuItem onClick={() => handleUpdateStatus('completed')} disabled={status === 'completed'}><ListItemText primary="Completed" /></MenuItem>
-                <MenuItem onClick={() => handleUpdateStatus('cancelled')} disabled={status === 'cancelled' || status === 'completed'}><ListItemText primary="Cancelled" /></MenuItem>
+                <MenuItem onClick={() => handleUpdateStatus('pending')} disabled={status === 'pending' || status === 'completed'}>
+                    <ListItemText primary={STATUS_TRANSLATIONS['pending']} />
+                </MenuItem>
+                <MenuItem onClick={() => handleUpdateStatus('active')} disabled={status === 'active' || status === 'completed'}>
+                    <ListItemText primary={STATUS_TRANSLATIONS['active']} />
+                </MenuItem>
+                <MenuItem onClick={() => handleUpdateStatus('completed')} disabled={status === 'completed'}>
+                    <ListItemText primary={STATUS_TRANSLATIONS['completed']} />
+                </MenuItem>
+                <MenuItem onClick={() => handleUpdateStatus('cancelled')} disabled={status === 'cancelled' || status === 'completed'}>
+                    <ListItemText primary={STATUS_TRANSLATIONS['cancelled']} />
+                </MenuItem>
             </Menu>
 
             {/* Menu for Payment Update */}
             <Menu anchorEl={openPaymentMenu} open={!!openPaymentMenu} onClose={handleClosePaymentMenu}>
-                <MenuItem onClick={() => handleUpdatePayment('unpaid')} disabled={payment_status === 'unpaid'}><ListItemText primary="Unpaid" /></MenuItem>
-                <MenuItem onClick={() => handleUpdatePayment('partial')} disabled={payment_status === 'partial'}><ListItemText primary="Partial" /></MenuItem>
-                <MenuItem onClick={() => handleUpdatePayment('paid')} disabled={payment_status === 'paid'}><ListItemText primary="Paid" /></MenuItem>
+                <MenuItem onClick={() => handleUpdatePayment('unpaid')} disabled={payment_status === 'unpaid'}>
+                    <ListItemText primary={PAYMENT_STATUS_TRANSLATIONS['unpaid']} />
+                </MenuItem>
+                <MenuItem onClick={() => handleUpdatePayment('partial')} disabled={payment_status === 'partial'}>
+                    <ListItemText primary={PAYMENT_STATUS_TRANSLATIONS['partial']} />
+                </MenuItem>
+                <MenuItem onClick={() => handleUpdatePayment('paid')} disabled={payment_status === 'paid'}>
+                    <ListItemText primary={PAYMENT_STATUS_TRANSLATIONS['paid']} />
+                </MenuItem>
             </Menu>
 
             {/* Edit Rental Modal */}

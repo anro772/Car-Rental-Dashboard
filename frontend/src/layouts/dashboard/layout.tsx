@@ -69,17 +69,17 @@ export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) 
                 <AccountPopover
                   data={[
                     {
-                      label: 'Home',
+                      label: 'Acasă',
                       href: '/',
                       icon: <Iconify width={22} icon="solar:home-angle-bold-duotone" />,
                     },
                     {
-                      label: 'Profile',
+                      label: 'Profil',
                       href: '#',
                       icon: <Iconify width={22} icon="solar:shield-keyhole-bold-duotone" />,
                     },
                     {
-                      label: 'Settings',
+                      label: 'Setări',
                       href: '#',
                       icon: <Iconify width={22} icon="solar:settings-bold-duotone" />,
                     },
@@ -104,7 +104,7 @@ export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) 
        * Style
        *************************************** */
       cssVars={{
-        '--layout-nav-vertical-width': '280px', // Slightly reduced the width
+        '--layout-nav-vertical-width': '280px',
         '--layout-dashboard-content-pt': theme.spacing(1),
         '--layout-dashboard-content-pb': theme.spacing(8),
         '--layout-dashboard-content-px': theme.spacing(5),

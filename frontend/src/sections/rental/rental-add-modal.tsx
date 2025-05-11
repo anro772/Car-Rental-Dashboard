@@ -29,6 +29,27 @@ import rentalsService, { NewRental } from 'src/services/rentalsService';
 import carsService, { Car } from 'src/services/carsService';
 import customersService, { Customer } from 'src/services/customersService';
 
+// Translation mappings for UI display (preserving backend values)
+const CAR_STATUS_TRANSLATIONS: Record<string, string> = {
+    'available': 'Disponibil',
+    'rented': 'Închiriată',
+    'maintenance': 'În mentenanță',
+    'pending': 'În așteptare'
+};
+
+const RENTAL_STATUS_TRANSLATIONS: Record<string, string> = {
+    'pending': 'În așteptare',
+    'active': 'Activ',
+    'completed': 'Finalizat',
+    'cancelled': 'Anulat'
+};
+
+const PAYMENT_STATUS_TRANSLATIONS: Record<string, string> = {
+    'unpaid': 'Neplătit',
+    'partial': 'Parțial',
+    'paid': 'Plătit'
+};
+
 // Helper functions remain the same
 const getColorHex = (colorName: string | undefined): string => {
     const colorMap: Record<string, string> = {
@@ -44,25 +65,25 @@ const getCarStatusChip = (status: string) => {
     switch (status) {
         case 'available':
             return {
-                label: 'Available',
+                label: CAR_STATUS_TRANSLATIONS['available'],
                 color: 'success' as const,
                 icon: 'eva:checkmark-circle-fill'
             };
         case 'rented':
             return {
-                label: 'Rented',
+                label: CAR_STATUS_TRANSLATIONS['rented'],
                 color: 'primary' as const,
                 icon: 'eva:car-fill'
             };
         case 'maintenance':
             return {
-                label: 'Maintenance',
+                label: CAR_STATUS_TRANSLATIONS['maintenance'],
                 color: 'warning' as const,
                 icon: 'eva:tools-fill'
             };
         case 'pending':
             return {
-                label: 'Pending',
+                label: CAR_STATUS_TRANSLATIONS['pending'],
                 color: 'warning' as const,
                 icon: 'eva:clock-fill'
             };
@@ -150,7 +171,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                 const preSelectedCustomer = customersData.find(c => c.id === customerId);
                 if (preSelectedCustomer && !preSelectedCustomer.license_verified) {
                     setCustomerCanRent(false);
-                    setError(`${preSelectedCustomer.first_name} ${preSelectedCustomer.last_name} does not have a verified license and cannot rent a car.`);
+                    setError(`${preSelectedCustomer.first_name} ${preSelectedCustomer.last_name} nu are un permis verificat și nu poate închiria o mașină.`);
                 } else {
                     setCustomerCanRent(true);
                 }
@@ -158,7 +179,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
 
         } catch (err) {
             console.error('Failed to load data:', err);
-            setError('Failed to load cars and customers data.');
+            setError('Nu s-au putut încărca datele mașinilor și clienților.');
         } finally {
             setLoading(false);
         }
@@ -183,7 +204,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                 if (!customer.license_verified) {
                     setFormErrors(prev => ({
                         ...prev,
-                        customer_id: 'Customer must have a verified license to rent a car'
+                        customer_id: 'Clientul trebuie să aibă un permis verificat pentru a închiria o mașină'
                     }));
                 }
             }
@@ -238,36 +259,39 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         }
     };
 
-    // Validation - remains the same
+    // Validation - with translated error messages
     const validateForm = (): boolean => {
         const errors: Record<string, string> = {};
-        if (!rentalData.car_id) errors.car_id = 'Car is required';
-        if (!rentalData.customer_id) errors.customer_id = 'Customer is required';
-        if (!rentalData.start_date) errors.start_date = 'Start date is required';
+        if (!rentalData.car_id) errors.car_id = 'Mașina este obligatorie';
+        if (!rentalData.customer_id) errors.customer_id = 'Clientul este obligatoriu';
+        if (!rentalData.start_date) errors.start_date = 'Data de început este obligatorie';
         if (!rentalData.end_date) {
-            errors.end_date = 'End date is required';
+            errors.end_date = 'Data de sfârșit este obligatorie';
         } else if (rentalData.start_date && rentalData.end_date) {
             if (new Date(rentalData.end_date) < new Date(rentalData.start_date)) {
-                errors.end_date = 'End date must be on or after start date';
+                errors.end_date = 'Data de sfârșit trebuie să fie la sau după data de început';
             }
         }
         if (!rentalData.total_cost || rentalData.total_cost <= 0) {
-            errors.total_cost = 'Total cost is required and must be positive';
+            errors.total_cost = 'Costul total este obligatoriu și trebuie să fie pozitiv';
         }
 
         // Check if selected customer has a verified license
         if (rentalData.customer_id) {
             const customer = customers.find(c => c.id === rentalData.customer_id);
             if (customer && !customer.license_verified) {
-                errors.customer_id = 'Customer must have a verified license to rent a car';
+                errors.customer_id = 'Clientul trebuie să aibă un permis verificat pentru a închiria o mașină';
             }
         }
 
         // Check if selected car is available
         if (rentalData.car_id) {
             const car = allCars.find(c => c.id === rentalData.car_id);
-            if (car && car.status !== 'available') {
-                errors.car_id = `Car is not available (${car.status})`;
+            if (car && car.status && car.status !== 'available') {
+                const statusDisplay = car.status in CAR_STATUS_TRANSLATIONS
+                    ? CAR_STATUS_TRANSLATIONS[car.status as keyof typeof CAR_STATUS_TRANSLATIONS]
+                    : car.status;
+                errors.car_id = `Mașina nu este disponibilă (${statusDisplay})`;
             }
         }
 
@@ -275,7 +299,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         return Object.keys(errors).length === 0;
     };
 
-    // UPDATED Submission function to also update car status
+    // UPDATED Submission function to also update car status - with translated error messages
     const handleSubmit = async () => {
         if (!validateForm()) return;
 
@@ -283,7 +307,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         if (rentalData.customer_id) {
             const customer = customers.find(c => c.id === rentalData.customer_id);
             if (customer && !customer.license_verified) {
-                setError('Cannot create rental: Customer must have a verified license');
+                setError('Nu se poate crea închirierea: Clientul trebuie să aibă un permis verificat');
                 return;
             }
         }
@@ -291,8 +315,11 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         // Double-check that car is available
         if (rentalData.car_id) {
             const car = allCars.find(c => c.id === rentalData.car_id);
-            if (car && car.status !== 'available') {
-                setError(`Cannot create rental: Car is not available (${car.status})`);
+            if (car && car.status && car.status !== 'available') {
+                const statusDisplay = car.status in CAR_STATUS_TRANSLATIONS
+                    ? CAR_STATUS_TRANSLATIONS[car.status as keyof typeof CAR_STATUS_TRANSLATIONS]
+                    : car.status;
+                setError(`Nu se poate crea închirierea: Mașina nu este disponibilă (${statusDisplay})`);
                 return;
             }
         }
@@ -321,9 +348,9 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
             onClose();
         } catch (err: any) {
             console.error('Failed to create rental:', err);
-            const errorMsg = err.response?.data?.error || 'Failed to create rental. Please check input.';
+            const errorMsg = err.response?.data?.error || 'Nu s-a putut crea închirierea. Verificați datele introduse.';
             if (errorMsg.includes('already booked')) {
-                setError('This car is already booked during the selected dates.');
+                setError('Această mașină este deja rezervată în perioada selectată.');
             } else {
                 setError(errorMsg);
             }
@@ -362,7 +389,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                     </Typography>
 
                     <Typography variant="caption" sx={{ color: 'text.secondary', ml: 1, mr: 1 }}>
-                        ${car.daily_rate}/day
+                        {car.daily_rate} Lei/zi
                     </Typography>
 
                     <Chip
@@ -376,11 +403,11 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
         );
     };
 
-    // The rest of the component (return statement) remains the same
+    // The return statement with translated text
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>
-                New Rental
+                Închiriere Nouă
                 <IconButton aria-label="close" onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}>
                     <Iconify icon="eva:close-fill" />
                 </IconButton>
@@ -391,7 +418,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
 
                 {!loading && (
                     <Alert severity="info" sx={{ mb: 3, mt: 2 }}>
-                        Only customers with a verified driver's license can rent a car. Only available cars can be selected.
+                        Doar clienții cu permis de conducere verificat pot închiria o mașină. Doar mașinile disponibile pot fi selectate.
                     </Alert>
                 )}
 
@@ -403,10 +430,10 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             {/* Car Selection */}
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth error={!!formErrors.car_id}>
-                                    <InputLabel id="car-label">Car</InputLabel>
+                                    <InputLabel id="car-label">Mașină</InputLabel>
                                     <Select
                                         labelId="car-label" name="car_id" value={rentalData.car_id || ''}
-                                        label="Car" onChange={handleSelectChange} disabled={submitting || !customerCanRent}
+                                        label="Mașină" onChange={handleSelectChange} disabled={submitting || !customerCanRent}
                                         // Render value to show selected car info (optional)
                                         renderValue={(selected) => {
                                             const car = allCars.find(c => c.id === selected);
@@ -416,7 +443,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                         {/* Available Cars Section */}
                                         <MenuItem disabled>
                                             <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                Available Cars
+                                                Mașini Disponibile
                                             </Typography>
                                         </MenuItem>
 
@@ -425,7 +452,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                         ) : (
                                             <MenuItem disabled>
                                                 <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                                                    No available cars
+                                                    Nu există mașini disponibile
                                                 </Typography>
                                             </MenuItem>
                                         )}
@@ -436,7 +463,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                                 <Divider sx={{ my: 1 }} />
                                                 <MenuItem disabled>
                                                     <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                                                        Unavailable Cars
+                                                        Mașini Indisponibile
                                                     </Typography>
                                                 </MenuItem>
                                                 {unavailableCars.map(car => renderCarItem(car))}
@@ -450,19 +477,19 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             {/* Customer Selection */}
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth error={!!formErrors.customer_id}>
-                                    <InputLabel id="customer-label">Customer</InputLabel>
+                                    <InputLabel id="customer-label">Client</InputLabel>
                                     <Select
                                         labelId="customer-label"
                                         name="customer_id"
                                         value={rentalData.customer_id || ''}
-                                        label="Customer"
+                                        label="Client"
                                         onChange={handleSelectChange}
                                         disabled={submitting || !!customerId}
                                     >
                                         {/* Verified Customers */}
                                         <MenuItem disabled>
                                             <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                Customers with Verified Licenses
+                                                Clienți cu Permise Verificate
                                             </Typography>
                                         </MenuItem>
 
@@ -475,7 +502,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                                         </Typography>
 
                                                         <Chip
-                                                            label="Verified"
+                                                            label="Verificat"
                                                             color="success"
                                                             size="small"
                                                             icon={<Iconify icon="eva:checkmark-circle-fill" />}
@@ -487,7 +514,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                         ) : (
                                             <MenuItem disabled>
                                                 <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                                                    No customers with verified licenses
+                                                    Nu există clienți cu permise verificate
                                                 </Typography>
                                             </MenuItem>
                                         )}
@@ -498,7 +525,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                                 <Divider sx={{ my: 1 }} />
                                                 <MenuItem disabled>
                                                     <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                                                        Customers with Unverified Licenses
+                                                        Clienți cu Permise Neverificate
                                                     </Typography>
                                                 </MenuItem>
 
@@ -519,9 +546,9 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                                                 {customer.first_name} {customer.last_name} - {customer.email}
                                                             </Typography>
 
-                                                            <Tooltip title="License not verified">
+                                                            <Tooltip title="Permis neverificat">
                                                                 <Chip
-                                                                    label="Unverified"
+                                                                    label="Neverificat"
                                                                     color="error"
                                                                     size="small"
                                                                     icon={<Iconify icon="eva:alert-triangle-fill" />}
@@ -541,7 +568,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             {/* Date Range */}
                             <Grid item xs={12} md={6}>
                                 <TextField
-                                    fullWidth label="Start Date" name="start_date" type="date"
+                                    fullWidth label="Data de Început" name="start_date" type="date"
                                     value={rentalData.start_date || ''} onChange={handleInputChange}
                                     disabled={submitting || !customerCanRent}
                                     InputLabelProps={{ shrink: true }}
@@ -551,7 +578,7 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             </Grid>
                             <Grid item xs={12} md={6}>
                                 <TextField
-                                    fullWidth label="End Date" name="end_date" type="date"
+                                    fullWidth label="Data de Sfârșit" name="end_date" type="date"
                                     value={rentalData.end_date || ''} onChange={handleInputChange}
                                     disabled={submitting || !customerCanRent}
                                     InputLabelProps={{ shrink: true }}
@@ -572,25 +599,25 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                                         onChange={handleSelectChange}
                                         disabled={submitting || !customerCanRent}
                                     >
-                                        <MenuItem value="pending">Pending</MenuItem>
-                                        <MenuItem value="active">Active</MenuItem>
+                                        <MenuItem value="pending">{RENTAL_STATUS_TRANSLATIONS['pending']}</MenuItem>
+                                        <MenuItem value="active">{RENTAL_STATUS_TRANSLATIONS['active']}</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth>
-                                    <InputLabel id="payment-status-label">Payment Status</InputLabel>
+                                    <InputLabel id="payment-status-label">Status Plată</InputLabel>
                                     <Select
                                         labelId="payment-status-label"
                                         name="payment_status"
                                         value={rentalData.payment_status || 'unpaid'}
-                                        label="Payment Status"
+                                        label="Status Plată"
                                         onChange={handleSelectChange}
                                         disabled={submitting || !customerCanRent}
                                     >
-                                        <MenuItem value="unpaid">Unpaid</MenuItem>
-                                        <MenuItem value="partial">Partial</MenuItem>
-                                        <MenuItem value="paid">Paid</MenuItem>
+                                        <MenuItem value="unpaid">{PAYMENT_STATUS_TRANSLATIONS['unpaid']}</MenuItem>
+                                        <MenuItem value="partial">{PAYMENT_STATUS_TRANSLATIONS['partial']}</MenuItem>
+                                        <MenuItem value="paid">{PAYMENT_STATUS_TRANSLATIONS['paid']}</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>
@@ -598,18 +625,18 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
                             {/* Total Cost and Notes */}
                             <Grid item xs={12} md={6}>
                                 <TextField
-                                    fullWidth label="Total Cost" name="total_cost" type="number"
+                                    fullWidth label="Cost Total" name="total_cost" type="number"
                                     value={rentalData.total_cost || ''} onChange={handleInputChange}
                                     disabled={submitting || !customerCanRent}
-                                    InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                                    InputProps={{ startAdornment: <InputAdornment position="start">Lei</InputAdornment> }}
                                     error={!!formErrors.total_cost}
-                                    helperText={formErrors.total_cost || (selectedCar ? `Calculated: $${calculatedTotal}` : '')}
+                                    helperText={formErrors.total_cost || (selectedCar ? `Calculat: ${calculatedTotal} Lei` : '')}
                                 />
                             </Grid>
                             <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Notes"
+                                    label="Note"
                                     name="notes"
                                     multiline
                                     rows={2}
@@ -624,14 +651,14 @@ export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: 
             </DialogContent>
 
             <DialogActions>
-                <Button onClick={onClose} disabled={submitting}>Cancel</Button>
+                <Button onClick={onClose} disabled={submitting}>Anulează</Button>
                 <Button
                     onClick={handleSubmit}
                     variant="contained"
                     disabled={submitting || loading || !customerCanRent}
                     startIcon={submitting ? <CircularProgress size={20} /> : null}
                 >
-                    {submitting ? 'Creating...' : 'Create Rental'}
+                    {submitting ? 'Se creează...' : 'Creează Închiriere'}
                 </Button>
             </DialogActions>
         </Dialog>

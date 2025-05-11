@@ -30,6 +30,15 @@ import { useRouter } from 'src/routes/hooks';
 
 import customersService, { Customer, UpdateCustomer } from 'src/services/customersService';
 
+// Translation mappings for status terms
+const STATUS_TRANSLATIONS = {
+  'Verified': 'Verificat',
+  'Unverified': 'Neverificat',
+  'No License': 'Fără permis',
+  'active': 'Activ',
+  'inactive': 'Inactiv'
+};
+
 // ----------------------------------------------------------------------
 
 type Props = {
@@ -211,17 +220,17 @@ export function CustomerTableRow({
     const errors: { [key: string]: string } = {};
 
     if (!editCustomer.first_name?.trim()) {
-      errors.first_name = 'First name is required';
+      errors.first_name = 'Prenumele este obligatoriu';
     }
 
     if (!editCustomer.last_name?.trim()) {
-      errors.last_name = 'Last name is required';
+      errors.last_name = 'Numele este obligatoriu';
     }
 
     if (!editCustomer.email?.trim()) {
-      errors.email = 'Email is required';
+      errors.email = 'Emailul este obligatoriu';
     } else if (!/\S+@\S+\.\S+/.test(editCustomer.email)) {
-      errors.email = 'Email is invalid';
+      errors.email = 'Emailul este invalid';
     }
 
     setFormErrors(errors);
@@ -266,7 +275,7 @@ export function CustomerTableRow({
       if (err.response?.data?.error?.includes('Email address already exists')) {
         setFormErrors(prev => ({
           ...prev,
-          email: 'Email address already exists'
+          email: 'Adresa de email există deja'
         }));
       }
     } finally {
@@ -317,21 +326,21 @@ export function CustomerTableRow({
         <TableCell>
           {license_verified ? (
             <Chip
-              label="Verified"
+              label={STATUS_TRANSLATIONS['Verified']}
               color="success"
               size="small"
               icon={<Iconify icon="eva:checkmark-circle-fill" />}
             />
           ) : license_image_url ? (
             <Chip
-              label="Unverified"
+              label={STATUS_TRANSLATIONS['Unverified']}
               color="warning"
               size="small"
               icon={<Iconify icon="eva:clock-fill" />}
             />
           ) : (
             <Chip
-              label="No License"
+              label={STATUS_TRANSLATIONS['No License']}
               color="default"
               size="small"
               variant="outlined"
@@ -341,7 +350,7 @@ export function CustomerTableRow({
 
         <TableCell>
           <Chip
-            label={status || 'active'}
+            label={status ? STATUS_TRANSLATIONS[status as keyof typeof STATUS_TRANSLATIONS] || status : STATUS_TRANSLATIONS['active']}
             color={status === 'active' ? 'success' : 'error'}
             size="small"
             variant="outlined"
@@ -367,28 +376,28 @@ export function CustomerTableRow({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{
           paper: {
-            sx: { width: 180 },
+            sx: { width: 280 },
           },
         }}
       >
         <MenuItem onClick={handleOpenEditDialog}>
           <Iconify icon="eva:edit-fill" sx={{ mr: 2 }} />
-          Edit
+          Editează
         </MenuItem>
 
         <MenuItem onClick={handleRentals}>
           <Iconify icon="mdi:car-key" sx={{ mr: 2 }} />
-          Rentals
+          Închirieri
         </MenuItem>
 
         <MenuItem onClick={() => handleLicenseVerification(!license_verified)}>
           <Iconify icon={license_verified ? "eva:shield-fill" : "eva:shield-outline"} sx={{ mr: 2 }} />
-          {license_verified ? 'Unverify License' : 'Verify License'}
+          {license_verified ? 'Anulează verificarea permisului' : 'Verifică permisul'}
         </MenuItem>
 
         <MenuItem onClick={onDeleteRow} sx={{ color: 'error.main' }}>
           <Iconify icon="eva:trash-2-outline" sx={{ mr: 2 }} />
-          Delete
+          Șterge
         </MenuItem>
       </Popover>
 
@@ -399,14 +408,14 @@ export function CustomerTableRow({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Edit Customer</DialogTitle>
+        <DialogTitle>Editează client</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }} noValidate>
             <FormControl fullWidth error={!!formErrors.first_name} sx={{ mb: 2 }}>
               <TextField
                 required
                 name="first_name"
-                label="First Name"
+                label="Prenume"
                 value={editCustomer.first_name}
                 onChange={handleInputChange}
                 error={!!formErrors.first_name}
@@ -420,7 +429,7 @@ export function CustomerTableRow({
               <TextField
                 required
                 name="last_name"
-                label="Last Name"
+                label="Nume"
                 value={editCustomer.last_name}
                 onChange={handleInputChange}
                 error={!!formErrors.last_name}
@@ -448,7 +457,7 @@ export function CustomerTableRow({
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
                 name="phone"
-                label="Phone"
+                label="Telefon"
                 value={editCustomer.phone}
                 onChange={handleInputChange}
               />
@@ -457,7 +466,7 @@ export function CustomerTableRow({
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
                 name="address"
-                label="Address"
+                label="Adresă"
                 multiline
                 rows={2}
                 value={editCustomer.address}
@@ -468,14 +477,14 @@ export function CustomerTableRow({
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
                 name="driver_license"
-                label="Driver License"
+                label="Permis de conducere"
                 value={editCustomer.driver_license}
                 onChange={handleInputChange}
               />
             </FormControl>
 
             {/* License Image Upload */}
-            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>Driver's License Image</Typography>
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>Imaginea permisului de conducere</Typography>
             <Paper
               sx={{
                 border: '2px dashed #ccc',
@@ -506,21 +515,21 @@ export function CustomerTableRow({
                 <>
                   <img
                     src={licenseImagePreview}
-                    alt="License preview"
+                    alt="Previzualizare permis"
                     style={{ maxWidth: '100%', maxHeight: 200, marginBottom: 10 }}
                   />
                   <Typography variant="body2" color="text.secondary">
-                    Click to change image
+                    Faceți clic pentru a schimba imaginea
                   </Typography>
                 </>
               ) : (
                 <>
                   <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
                   <Typography variant="body1" sx={{ mt: 2 }}>
-                    Drag & drop license image here or click to browse
+                    Trageți și plasați imaginea permisului aici sau faceți clic pentru a naviga
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Supported formats: JPG, PNG, JPEG, GIF
+                    Formate acceptate: JPG, PNG, JPEG, GIF
                   </Typography>
                 </>
               )}
@@ -536,9 +545,9 @@ export function CustomerTableRow({
                     onChange={handleCheckboxChange}
                   />
                 }
-                label="Verify License"
+                label="Verifică permisul"
               />
-              <FormHelperText>Check this box if you've verified the customer's license</FormHelperText>
+              <FormHelperText>Bifați această căsuță dacă ați verificat permisul clientului</FormHelperText>
             </FormControl>
 
             <FormControl fullWidth sx={{ mb: 2 }}>
@@ -550,20 +559,20 @@ export function CustomerTableRow({
                 label="Status"
                 onChange={handleSelectChange}
               >
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
+                <MenuItem value="active">{STATUS_TRANSLATIONS['active']}</MenuItem>
+                <MenuItem value="inactive">{STATUS_TRANSLATIONS['inactive']}</MenuItem>
               </Select>
             </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button onClick={handleCloseEditDialog}>Anulează</Button>
           <Button
             onClick={handleUpdateCustomer}
             variant="contained"
             disabled={loading}
           >
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? 'Se salvează...' : 'Salvează modificările'}
           </Button>
         </DialogActions>
       </Dialog>

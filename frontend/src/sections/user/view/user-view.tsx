@@ -145,7 +145,7 @@ export function CustomerView() {
 
       if (customer) {
         // Show info notification
-        showSnackbar(`Showing details for ${customer.first_name} ${customer.last_name}`, 'info');
+        showSnackbar(`Se afișează detaliile pentru ${customer.first_name} ${customer.last_name}`, 'info');
 
         // Wait for the table to render, then scroll to the customer row
         setTimeout(() => {
@@ -175,7 +175,7 @@ export function CustomerView() {
     );
 
     // Show success notification
-    showSnackbar('Customer updated successfully', 'success');
+    showSnackbar('Client actualizat cu succes', 'success');
   };
 
   const fetchCustomers = async () => {
@@ -186,7 +186,7 @@ export function CustomerView() {
       setError('');
     } catch (err) {
       console.error('Failed to fetch customers:', err);
-      setError('No customers loaded');
+      setError('Nu s-au putut încărca clienții');
     } finally {
       setLoading(false);
     }
@@ -196,10 +196,10 @@ export function CustomerView() {
     try {
       await customersService.deleteCustomer(id);
       setCustomers(customers.filter(customer => customer.id !== id));
-      showSnackbar('Customer deleted successfully', 'success');
+      showSnackbar('Client șters cu succes', 'success');
     } catch (err) {
       console.error('Failed to delete customer:', err);
-      showSnackbar('Failed to delete customer. They may have active rentals.', 'error');
+      showSnackbar('Nu s-a putut șterge clientul. Este posibil să aibă închirieri active.', 'error');
     }
   };
 
@@ -220,10 +220,10 @@ export function CustomerView() {
 
       // Clear selection
       table.onSelectAllRows(false, []);
-      showSnackbar(`${table.selected.length} customers deleted successfully`, 'success');
+      showSnackbar(`${table.selected.length} clienți șterși cu succes`, 'success');
     } catch (err) {
       console.error('Failed to delete customers:', err);
-      showSnackbar('Failed to delete one or more customers. They may have active rentals.', 'error');
+      showSnackbar('Nu s-au putut șterge unul sau mai mulți clienți. Este posibil să aibă închirieri active.', 'error');
     }
   };
 
@@ -238,7 +238,7 @@ export function CustomerView() {
 
     // Open default email client
     window.location.href = `mailto:${emailAddresses}`;
-    showSnackbar('Email client opened', 'info');
+    showSnackbar('Client de email deschis', 'info');
   };
 
   const handleOpenNewCustomerDialog = () => {
@@ -291,17 +291,17 @@ export function CustomerView() {
     const errors: { [key: string]: string } = {};
 
     if (!newCustomer.first_name.trim()) {
-      errors.first_name = 'First name is required';
+      errors.first_name = 'Prenumele este obligatoriu';
     }
 
     if (!newCustomer.last_name.trim()) {
-      errors.last_name = 'Last name is required';
+      errors.last_name = 'Numele este obligatoriu';
     }
 
     if (!newCustomer.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = 'Emailul este obligatoriu';
     } else if (!/\S+@\S+\.\S+/.test(newCustomer.email)) {
-      errors.email = 'Email is invalid';
+      errors.email = 'Emailul este invalid';
     }
 
     setFormErrors(errors);
@@ -326,7 +326,7 @@ export function CustomerView() {
           newCustomer.license_image_url = filePath;
         } catch (uploadError) {
           console.error('License image upload failed:', uploadError);
-          showSnackbar('Failed to upload license image. Will continue with customer creation.', 'warning');
+          showSnackbar('Nu s-a putut încărca imaginea permisului. Se va continua cu crearea clientului.', 'warning');
         }
       }
 
@@ -336,16 +336,16 @@ export function CustomerView() {
       setCustomers(prev => [...prev, newCreatedCustomer]);
 
       handleCloseNewCustomerDialog();
-      showSnackbar('Customer created successfully', 'success');
+      showSnackbar('Client creat cu succes', 'success');
     } catch (err: any) {
       console.error('Failed to create customer:', err);
       if (err.response?.data?.error?.includes('Email address already exists')) {
         setFormErrors(prev => ({
           ...prev,
-          email: 'Email address already exists'
+          email: 'Adresa de email există deja'
         }));
       } else {
-        showSnackbar('Failed to create customer', 'error');
+        showSnackbar('Nu s-a putut crea clientul', 'error');
       }
     }
   };
@@ -369,14 +369,14 @@ export function CustomerView() {
     <DashboardContent>
       <Box display="flex" alignItems="center" mb={5}>
         <Typography variant="h4" flexGrow={1}>
-          Customers
+          Clienți
         </Typography>
         <Button
           variant="contained"
           startIcon={<Iconify icon="mingcute:add-line" />}
           onClick={handleOpenNewCustomerDialog}
         >
-          New Customer
+          Client Nou
         </Button>
       </Box>
 
@@ -414,12 +414,12 @@ export function CustomerView() {
                   )
                 }
                 headLabel={[
-                  { id: 'name', label: 'Name' },
+                  { id: 'name', label: 'Nume' },
                   { id: 'email', label: 'Email' },
-                  { id: 'phone', label: 'Phone' },
-                  { id: 'address', label: 'Address' },
-                  { id: 'driver_license', label: 'Driver License' },
-                  { id: 'license_status', label: 'License Status' }, // Add this new column
+                  { id: 'phone', label: 'Telefon' },
+                  { id: 'address', label: 'Adresă' },
+                  { id: 'driver_license', label: 'Permis de conducere' },
+                  { id: 'license_status', label: 'Status permis' },
                   { id: 'status', label: 'Status' },
                   { id: '' },
                 ]}
@@ -473,14 +473,14 @@ export function CustomerView() {
 
       {/* New Customer Dialog */}
       <Dialog open={openNewCustomerDialog} onClose={handleCloseNewCustomerDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Customer</DialogTitle>
+        <DialogTitle>Adaugă Client Nou</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }} noValidate>
             <FormControl fullWidth error={!!formErrors.first_name} sx={{ mb: 2 }}>
               <TextField
                 required
                 name="first_name"
-                label="First Name"
+                label="Prenume"
                 value={newCustomer.first_name}
                 onChange={handleFormChange}
                 error={!!formErrors.first_name}
@@ -494,7 +494,7 @@ export function CustomerView() {
               <TextField
                 required
                 name="last_name"
-                label="Last Name"
+                label="Nume"
                 value={newCustomer.last_name}
                 onChange={handleFormChange}
                 error={!!formErrors.last_name}
@@ -522,7 +522,7 @@ export function CustomerView() {
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
                 name="phone"
-                label="Phone"
+                label="Telefon"
                 value={newCustomer.phone}
                 onChange={handleFormChange}
               />
@@ -531,7 +531,7 @@ export function CustomerView() {
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
                 name="address"
-                label="Address"
+                label="Adresă"
                 multiline
                 rows={2}
                 value={newCustomer.address}
@@ -542,13 +542,13 @@ export function CustomerView() {
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
                 name="driver_license"
-                label="Driver License"
+                label="Permis de conducere"
                 value={newCustomer.driver_license}
                 onChange={handleFormChange}
               />
             </FormControl>
             {/* License Image Upload */}
-            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>Driver's License Image</Typography>
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>Imaginea Permisului de Conducere</Typography>
             <Paper
               sx={{
                 border: '2px dashed #ccc',
@@ -579,21 +579,21 @@ export function CustomerView() {
                 <>
                   <img
                     src={licenseImagePreview}
-                    alt="License preview"
+                    alt="Previzualizare permis"
                     style={{ maxWidth: '100%', maxHeight: 200, marginBottom: 10 }}
                   />
                   <Typography variant="body2" color="text.secondary">
-                    Click to change image
+                    Faceți clic pentru a schimba imaginea
                   </Typography>
                 </>
               ) : (
                 <>
                   <Iconify icon="eva:image-fill" width={48} height={48} color="#aaa" />
                   <Typography variant="body1" sx={{ mt: 2 }}>
-                    Drag & drop license image here or click to browse
+                    Trageți și plasați imaginea permisului aici sau faceți clic pentru a naviga
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Supported formats: JPG, PNG, JPEG, GIF
+                    Formate acceptate: JPG, PNG, JPEG, GIF
                   </Typography>
                 </>
               )}
@@ -609,15 +609,15 @@ export function CustomerView() {
                     onChange={handleFormChange}
                   />
                 }
-                label="Verify License"
+                label="Verifică Permisul"
               />
-              <FormHelperText>Check this box if you've verified the customer's license</FormHelperText>
+              <FormHelperText>Bifați această căsuță dacă ați verificat permisul clientului</FormHelperText>
             </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseNewCustomerDialog}>Cancel</Button>
-          <Button onClick={handleCreateCustomer} variant="contained">Create</Button>
+          <Button onClick={handleCloseNewCustomerDialog}>Anulează</Button>
+          <Button onClick={handleCreateCustomer} variant="contained">Creează</Button>
         </DialogActions>
       </Dialog>
 

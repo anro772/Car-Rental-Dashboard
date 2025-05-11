@@ -40,18 +40,18 @@ export function CustomerTableToolbar({
     >
       {numSelected > 0 ? (
         <Stack direction="row" spacing={1}>
-          <Tooltip title="Delete">
+          <Tooltip title="Șterge">
             <Button
               color="error"
               variant="contained"
               startIcon={<Iconify icon="eva:trash-2-outline" />}
               onClick={onDelete}
             >
-              Delete ({numSelected})
+              Șterge ({numSelected})
             </Button>
           </Tooltip>
 
-          <Tooltip title="Send Email">
+          <Tooltip title="Trimite Email">
             <Button
               color="primary"
               variant="contained"
@@ -66,7 +66,7 @@ export function CustomerTableToolbar({
         <OutlinedInput
           value={filterName}
           onChange={onFilterName}
-          placeholder="Search customer..."
+          placeholder="Caută client..."
           startAdornment={
             <InputAdornment position="start">
               <Iconify

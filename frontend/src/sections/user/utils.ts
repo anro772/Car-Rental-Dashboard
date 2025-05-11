@@ -8,7 +8,54 @@ export function emptyRows(page: number, rowsPerPage: number, arrayLength: number
 
 // ----------------------------------------------------------------------
 
+// Helper function to get license status priority for sorting
+function getLicenseStatusPriority(customer: Customer): number {
+  // Priority: Verified (highest) > Unverified > No License (lowest)
+  if (customer.license_verified) {
+    return 3; // Verified
+  } else if (customer.license_image_url) {
+    return 2; // Unverified
+  } else {
+    return 1; // No License
+  }
+}
+
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
+  // Special case for sorting by license status
+  if (orderBy === 'license_status' as unknown as keyof T) {
+    const aCustomer = a as unknown as Customer;
+    const bCustomer = b as unknown as Customer;
+
+    const aPriority = getLicenseStatusPriority(aCustomer);
+    const bPriority = getLicenseStatusPriority(bCustomer);
+
+    if (bPriority < aPriority) {
+      return -1;
+    }
+    if (bPriority > aPriority) {
+      return 1;
+    }
+    return 0;
+  }
+
+  // Special case for name sorting (first_name + last_name)
+  if (orderBy === 'name' as unknown as keyof T) {
+    const aCustomer = a as unknown as Customer;
+    const bCustomer = b as unknown as Customer;
+
+    const aName = `${aCustomer.first_name} ${aCustomer.last_name}`.toLowerCase();
+    const bName = `${bCustomer.first_name} ${bCustomer.last_name}`.toLowerCase();
+
+    if (bName < aName) {
+      return -1;
+    }
+    if (bName > aName) {
+      return 1;
+    }
+    return 0;
+  }
+
+  // Default case for other fields
   if (b[orderBy] < a[orderBy]) {
     return -1;
   }
@@ -59,12 +106,18 @@ export function applyFilter({
         const fullName = `${customer.first_name} ${customer.last_name}`.toLowerCase();
         const email = customer.email.toLowerCase();
         const phone = customer.phone?.toLowerCase() || '';
+        const address = customer.address?.toLowerCase() || '';
+        const driverLicense = customer.driver_license?.toLowerCase() || '';
+        const status = customer.status?.toLowerCase() || '';
         const searchTerm = filterName.toLowerCase();
 
         return (
           fullName.indexOf(searchTerm) !== -1 ||
           email.indexOf(searchTerm) !== -1 ||
-          phone.indexOf(searchTerm) !== -1
+          phone.indexOf(searchTerm) !== -1 ||
+          address.indexOf(searchTerm) !== -1 ||
+          driverLicense.indexOf(searchTerm) !== -1 ||
+          status.indexOf(searchTerm) !== -1
         );
       }
     );

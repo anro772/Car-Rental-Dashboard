@@ -99,6 +99,64 @@ router.get('/overdue', async (req, res) => {
     }
 });
 
+router.put('/:id/complete', async (req, res) => {
+    try {
+        const { end_km, end_fuel_level, notes } = req.body;
+        const rentalId = req.params.id;
+
+        // Get the current rental
+        const [rental] = await req.app.locals.db.query(
+            'SELECT * FROM rentals WHERE id = ?',
+            [rentalId]
+        );
+
+        if (rental.length === 0) {
+            return res.status(404).json({ error: 'Rental not found' });
+        }
+
+        // Update rental with end technical data
+        await req.app.locals.db.query(
+            'UPDATE rentals SET status = ?, end_km = ?, end_fuel_level = ?, notes = ? WHERE id = ?',
+            ['completed', end_km, end_fuel_level, notes || rental[0].notes, rentalId]
+        );
+
+        // Update car with the latest kilometers and fuel level
+        await req.app.locals.db.query(
+            'UPDATE cars SET status = ?, kilometers = ?, fuel_level = ? WHERE id = ?',
+            ['available', end_km, end_fuel_level, rental[0].car_id]
+        );
+
+        // Add entry to car technical history
+        await req.app.locals.db.query(
+            `INSERT INTO car_technical_history 
+            (car_id, kilometers, fuel_level, notes, updated_by) 
+            VALUES (?, ?, ?, ?, ?)`,
+            [
+                rental[0].car_id,
+                end_km,
+                end_fuel_level,
+                `Rental #${rentalId} completed. ${notes || ''}`,
+                null // Could be updated with admin ID if available
+            ]
+        );
+
+        // Get the updated rental
+        const [updatedRental] = await req.app.locals.db.query(`
+            SELECT r.*, 
+                c.brand, c.model, c.license_plate, 
+                CONCAT(cu.first_name, ' ', cu.last_name) as customer_name, cu.email as customer_email
+            FROM rentals r
+            JOIN cars c ON r.car_id = c.id
+            JOIN customers cu ON r.customer_id = cu.id
+            WHERE r.id = ?
+        `, [rentalId]);
+
+        res.json(updatedRental[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET rentals by status
 router.get('/status/:status', async (req, res) => {
     const validStatuses = ['pending', 'active', 'completed', 'cancelled'];
@@ -303,7 +361,7 @@ router.post('/', async (req, res) => {
 // PUT update rental status
 router.put('/:id/status', async (req, res) => {
     try {
-        const { status } = req.body;
+        const { status, start_km, start_fuel_level, end_km, end_fuel_level } = req.body;
         const rentalId = req.params.id;
 
         if (!status) {
@@ -325,23 +383,66 @@ router.put('/:id/status', async (req, res) => {
             return res.status(404).json({ error: 'Rental not found' });
         }
 
-        // Update the rental status
-        await req.app.locals.db.query(
-            'UPDATE rentals SET status = ? WHERE id = ?',
-            [status, rentalId]
-        );
+        // Build update query based on status and provided data
+        let updateQuery = 'UPDATE rentals SET status = ?';
+        let updateValues = [status];
 
-        // Update car status based on rental status
+        // Add technical data if provided
+        if (status === 'active' && (start_km !== undefined || start_fuel_level !== undefined)) {
+            if (start_km !== undefined) {
+                updateQuery += ', start_km = ?';
+                updateValues.push(start_km);
+            }
+            if (start_fuel_level !== undefined) {
+                updateQuery += ', start_fuel_level = ?';
+                updateValues.push(start_fuel_level);
+            }
+        }
+
+        if (status === 'completed' && (end_km !== undefined || end_fuel_level !== undefined)) {
+            if (end_km !== undefined) {
+                updateQuery += ', end_km = ?';
+                updateValues.push(end_km);
+            }
+            if (end_fuel_level !== undefined) {
+                updateQuery += ', end_fuel_level = ?';
+                updateValues.push(end_fuel_level);
+            }
+        }
+
+        updateQuery += ' WHERE id = ?';
+        updateValues.push(rentalId);
+
+        // Update the rental
+        await req.app.locals.db.query(updateQuery, updateValues);
+
+        // Update car status and technical data
         if (status === 'active') {
             await req.app.locals.db.query(
                 "UPDATE cars SET status = 'rented' WHERE id = ?",
                 [rental[0].car_id]
             );
         } else if (status === 'completed' || status === 'cancelled') {
-            await req.app.locals.db.query(
-                "UPDATE cars SET status = 'available' WHERE id = ?",
-                [rental[0].car_id]
-            );
+            // Update car with latest technical data if completing
+            if (status === 'completed' && end_km !== undefined && end_fuel_level !== undefined) {
+                await req.app.locals.db.query(
+                    "UPDATE cars SET status = 'available', kilometers = ?, fuel_level = ? WHERE id = ?",
+                    [end_km, end_fuel_level, rental[0].car_id]
+                );
+
+                // Add to technical history
+                await req.app.locals.db.query(
+                    `INSERT INTO car_technical_history 
+                    (car_id, kilometers, fuel_level, notes) 
+                    VALUES (?, ?, ?, ?)`,
+                    [rental[0].car_id, end_km, end_fuel_level, `Rental #${rentalId} completed`]
+                );
+            } else {
+                await req.app.locals.db.query(
+                    "UPDATE cars SET status = 'available' WHERE id = ?",
+                    [rental[0].car_id]
+                );
+            }
         }
 
         // Get the updated rental
@@ -360,6 +461,52 @@ router.put('/:id/status', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+router.put('/:id/start', async (req, res) => {
+    try {
+        const { start_km, start_fuel_level } = req.body;
+        const rentalId = req.params.id;
+
+        // Get the current rental
+        const [rental] = await req.app.locals.db.query(
+            'SELECT * FROM rentals WHERE id = ?',
+            [rentalId]
+        );
+
+        if (rental.length === 0) {
+            return res.status(404).json({ error: 'Rental not found' });
+        }
+
+        // Update rental with start technical data
+        await req.app.locals.db.query(
+            'UPDATE rentals SET status = ?, start_km = ?, start_fuel_level = ? WHERE id = ?',
+            ['active', start_km, start_fuel_level, rentalId]
+        );
+
+        // Update car status to rented
+        await req.app.locals.db.query(
+            "UPDATE cars SET status = 'rented' WHERE id = ?",
+            [rental[0].car_id]
+        );
+
+        // Get the updated rental
+        const [updatedRental] = await req.app.locals.db.query(`
+            SELECT r.*, 
+                c.brand, c.model, c.license_plate, 
+                CONCAT(cu.first_name, ' ', cu.last_name) as customer_name, cu.email as customer_email
+            FROM rentals r
+            JOIN cars c ON r.car_id = c.id
+            JOIN customers cu ON r.customer_id = cu.id
+            WHERE r.id = ?
+        `, [rentalId]);
+
+        res.json(updatedRental[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 
 // PUT update payment status
 router.put('/:id/payment', async (req, res) => {

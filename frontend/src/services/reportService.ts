@@ -481,7 +481,7 @@ export const generateReport = async (date: Date, type: 'daily' | 'monthly'): Pro
 
                 autoTable(doc, {
                     startY: currentY,
-                    head: [['Vehicul', 'Nr. Înmatr.', 'Categ.', 'Nr. Închir.', 'Venit Total', 'Ultimul Start']],
+                    head: [['Vehicul', 'Nr. Înmatr.', 'Categ.', 'Nr. Închir.', 'Venit Total', 'Data finală']],
                     body: topCarsData,
                     theme: 'grid',
                     headStyles: { fillColor: [76, 175, 80], font: FONT_NAME, fontSize: 9 },

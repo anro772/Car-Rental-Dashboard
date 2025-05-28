@@ -1,9 +1,9 @@
-// src/services/carsService.ts
+// src/services/carsService.ts - Updated with technical specifications
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Car interface to match backend schema
+// Car interface with technical specifications
 export interface Car {
     id: number;
     brand: string;
@@ -16,7 +16,55 @@ export interface Car {
     status?: 'available' | 'rented' | 'maintenance' | 'pending';
     image_url?: string;
     features?: string;
+    // Technical specifications
+    kilometers?: number;
+    fuel_type?: 'benzina' | 'motorina' | 'electric' | 'hybrid' | 'gpl';
+    fuel_level?: number; // percentage 0-100
+    engine_size?: string;
+    transmission_type?: 'manual' | 'automat' | 'semi-automat';
+    seats_count?: number;
+    doors_count?: number;
+    tank_capacity?: number;
+    last_service_date?: string;
+    last_service_km?: number;
+    next_service_km?: number;
+    vin_number?: string;
+    registration_date?: string;
+    insurance_expiry?: string;
+    itp_expiry?: string;
     created_at?: string;
+    updated_at?: string;
+}
+
+// Technical sheet interface
+export interface CarTechnicalSheet extends Car {
+    total_rentals?: number;
+    last_recorded_km?: number;
+}
+
+// Technical history entry
+export interface CarTechnicalHistory {
+    id: number;
+    car_id: number;
+    kilometers: number;
+    fuel_level: number;
+    notes?: string;
+    updated_by?: number;
+    updated_by_name?: string;
+    created_at: string;
+}
+
+// Technical update data
+export interface TechnicalUpdateData {
+    kilometers?: number;
+    fuel_level?: number;
+    last_service_date?: string;
+    last_service_km?: number;
+    next_service_km?: number;
+    insurance_expiry?: string;
+    itp_expiry?: string;
+    notes?: string;
+    admin_id?: number;
 }
 
 // Interface for car image upload
@@ -36,7 +84,7 @@ export interface SimilarCarsUpdateInfo {
 }
 
 // Type for creating a new car
-export type NewCar = Omit<Car, 'id' | 'created_at'>;
+export type NewCar = Omit<Car, 'id' | 'created_at' | 'updated_at'>;
 
 // Type for updating a car
 export type UpdateCar = Partial<NewCar>;
@@ -61,6 +109,39 @@ const carsService = {
             return response.data;
         } catch (error) {
             console.error(`Error fetching car with ID ${id}:`, error);
+            throw error;
+        }
+    },
+
+    // Get technical sheet for a car
+    getTechnicalSheet: async (id: number): Promise<CarTechnicalSheet> => {
+        try {
+            const response = await axios.get(`${API_URL}/cars/${id}/technical-sheet`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching technical sheet for car ${id}:`, error);
+            throw error;
+        }
+    },
+
+    // Update technical data for a car
+    updateTechnicalData: async (id: number, data: TechnicalUpdateData): Promise<{ message: string }> => {
+        try {
+            const response = await axios.patch(`${API_URL}/cars/${id}/technical`, data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error updating technical data for car ${id}:`, error);
+            throw error;
+        }
+    },
+
+    // Get technical history for a car
+    getTechnicalHistory: async (id: number): Promise<CarTechnicalHistory[]> => {
+        try {
+            const response = await axios.get(`${API_URL}/cars/${id}/technical-history`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching technical history for car ${id}:`, error);
             throw error;
         }
     },
@@ -156,7 +237,6 @@ const carsService = {
     // Direct method to update car status
     updateCarStatus: async (id: number, status: 'available' | 'rented' | 'maintenance' | 'pending'): Promise<{ message: string; affected: number }> => {
         try {
-            // Use the new dedicated endpoint for updating status
             const response = await axios.patch(`${API_URL}/cars/${id}/status`, { status });
             console.log(`Car ${id} status updated to "${status}" successfully:`, response.data);
             return response.data;
@@ -182,7 +262,6 @@ const carsService = {
         const formData = new FormData();
         formData.append('image', imageFile);
 
-        // Use query parameters instead of form fields
         let url = `${API_URL}/upload?type=car`;
         url += `&brand=${encodeURIComponent(carInfo.brand || '')}`;
         url += `&model=${encodeURIComponent(carInfo.model || '')}`;
@@ -209,7 +288,6 @@ const carsService = {
     // Update images for all cars with the same brand, model, and year
     updateSimilarCarsImages: async (info: SimilarCarsUpdateInfo): Promise<{ message: string; affected: number }> => {
         try {
-            // Make call to update all similar cars
             const response = await axios.post(`${API_URL}/cars/update-similar-images`, {
                 brand: info.brand,
                 model: info.model,

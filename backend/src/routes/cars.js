@@ -1,6 +1,141 @@
-// src/routes/cars.js
+// src/routes/cars.js - Updated with technical specifications
 const express = require('express');
 const router = express.Router();
+
+// GET technical sheet for a specific car
+router.get('/:id/technical-sheet', async (req, res) => {
+    try {
+        const [car] = await req.app.locals.db.query(
+            `SELECT 
+                c.*,
+                COUNT(DISTINCT r.id) as total_rentals,
+                MAX(r.end_km) as last_recorded_km
+            FROM cars c
+            LEFT JOIN rentals r ON c.id = r.car_id
+            WHERE c.id = ?
+            GROUP BY c.id`,
+            [req.params.id]
+        );
+
+        if (car.length === 0) {
+            return res.status(404).json({ error: 'Car not found' });
+        }
+
+        res.json(car[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update technical data for a car
+router.patch('/:id/technical', async (req, res) => {
+    try {
+        const {
+            kilometers,
+            fuel_level,
+            last_service_date,
+            last_service_km,
+            next_service_km,
+            insurance_expiry,
+            itp_expiry,
+            notes,
+            admin_id
+        } = req.body;
+
+        // Check if car exists
+        const [existing] = await req.app.locals.db.query(
+            'SELECT * FROM cars WHERE id = ?',
+            [req.params.id]
+        );
+
+        if (existing.length === 0) {
+            return res.status(404).json({ error: 'Car not found' });
+        }
+
+        // Build update query dynamically
+        const updates = [];
+        const values = [];
+
+        if (kilometers !== undefined) {
+            updates.push('kilometers = ?');
+            values.push(kilometers);
+        }
+        if (fuel_level !== undefined) {
+            updates.push('fuel_level = ?');
+            values.push(fuel_level);
+        }
+        if (last_service_date !== undefined) {
+            updates.push('last_service_date = ?');
+            values.push(last_service_date);
+        }
+        if (last_service_km !== undefined) {
+            updates.push('last_service_km = ?');
+            values.push(last_service_km);
+        }
+        if (next_service_km !== undefined) {
+            updates.push('next_service_km = ?');
+            values.push(next_service_km);
+        }
+        if (insurance_expiry !== undefined) {
+            updates.push('insurance_expiry = ?');
+            values.push(insurance_expiry);
+        }
+        if (itp_expiry !== undefined) {
+            updates.push('itp_expiry = ?');
+            values.push(itp_expiry);
+        }
+
+        if (updates.length > 0) {
+            // Update the car
+            values.push(req.params.id);
+            await req.app.locals.db.query(
+                `UPDATE cars SET ${updates.join(', ')} WHERE id = ?`,
+                values
+            );
+
+            // Log the technical update in history
+            if (kilometers !== undefined || fuel_level !== undefined) {
+                await req.app.locals.db.query(
+                    `INSERT INTO car_technical_history 
+                    (car_id, kilometers, fuel_level, notes, updated_by) 
+                    VALUES (?, ?, ?, ?, ?)`,
+                    [
+                        req.params.id,
+                        kilometers || existing[0].kilometers,
+                        fuel_level || existing[0].fuel_level,
+                        notes || null,
+                        admin_id || null
+                    ]
+                );
+            }
+        }
+
+        res.json({ message: 'Technical data updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get technical history for a car
+router.get('/:id/technical-history', async (req, res) => {
+    try {
+        const [history] = await req.app.locals.db.query(
+            `SELECT 
+                cth.*,
+                a.name as updated_by_name
+            FROM car_technical_history cth
+            LEFT JOIN admins a ON cth.updated_by = a.id
+            WHERE cth.car_id = ?
+            ORDER BY cth.created_at DESC
+            LIMIT 50`,
+            [req.params.id]
+        );
+
+        res.json(history);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // *** IMPORTANT: Route order matters in Express! ***
 // Make sure specific routes come before parameterized routes
@@ -17,7 +152,7 @@ router.get('/status/available', async (req, res) => {
     }
 });
 
-// GET pending cars (new route)
+// GET pending cars
 router.get('/status/pending', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -29,7 +164,7 @@ router.get('/status/pending', async (req, res) => {
     }
 });
 
-// GET rented cars (new route)
+// GET rented cars
 router.get('/status/rented', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -41,7 +176,7 @@ router.get('/status/rented', async (req, res) => {
     }
 });
 
-// GET maintenance cars (new route)
+// GET maintenance cars
 router.get('/status/maintenance', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -66,7 +201,7 @@ router.get('/category/:category', async (req, res) => {
     }
 });
 
-// NEW: Direct endpoint to update car status
+// Direct endpoint to update car status
 router.patch('/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
@@ -134,30 +269,32 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST new car
+// POST new car with technical specifications
 router.post('/', async (req, res) => {
     try {
         const {
-            brand,
-            model,
-            year,
-            license_plate,
-            color,
-            category,
-            daily_rate,
-            status,
-            image_url,
-            features
+            brand, model, year, license_plate, color, category, daily_rate,
+            status, image_url, features,
+            // Technical specifications
+            kilometers, fuel_type, fuel_level, engine_size, transmission_type,
+            seats_count, doors_count, tank_capacity, vin_number,
+            registration_date, insurance_expiry, itp_expiry
         } = req.body;
 
         const [result] = await req.app.locals.db.query(
             `INSERT INTO cars (
-                brand, model, year, license_plate, color, 
-                category, daily_rate, status, image_url, features
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                brand, model, year, license_plate, color, category, daily_rate, 
+                status, image_url, features, kilometers, fuel_type, fuel_level,
+                engine_size, transmission_type, seats_count, doors_count, 
+                tank_capacity, vin_number, registration_date, insurance_expiry, itp_expiry
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                brand, model, year, license_plate, color,
-                category, daily_rate, status || 'available', image_url, features
+                brand, model, year, license_plate, color, category, daily_rate,
+                status || 'available', image_url, features,
+                kilometers || 0, fuel_type || 'benzina', fuel_level || 100,
+                engine_size, transmission_type || 'manual', seats_count || 5,
+                doors_count || 4, tank_capacity || 50, vin_number,
+                registration_date, insurance_expiry, itp_expiry
             ]
         );
 
@@ -170,16 +307,15 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Update similar car images
 router.post('/update-similar-images', async (req, res) => {
     const { brand, model, year, image_url } = req.body;
 
-    // Validate required fields
     if (!brand || !model || !year || !image_url) {
         return res.status(400).json({ error: 'Brand, model, year, and image_url are required' });
     }
 
     try {
-        // Update all cars with the same brand, model, and year
         const [result] = await req.app.locals.db.query(
             'UPDATE cars SET image_url = ? WHERE brand = ? AND model = ? AND year = ?',
             [image_url, brand, model, year]
@@ -195,20 +331,16 @@ router.post('/update-similar-images', async (req, res) => {
     }
 });
 
-// PUT/UPDATE car
+// PUT/UPDATE car with technical specifications
 router.put('/:id', async (req, res) => {
     try {
         const {
-            brand,
-            model,
-            year,
-            license_plate,
-            color,
-            category,
-            daily_rate,
-            status,
-            image_url,
-            features
+            brand, model, year, license_plate, color, category, daily_rate,
+            status, image_url, features,
+            // Technical specifications
+            kilometers, fuel_type, fuel_level, engine_size, transmission_type,
+            seats_count, doors_count, tank_capacity, vin_number,
+            registration_date, insurance_expiry, itp_expiry
         } = req.body;
 
         // Check if car exists
@@ -223,21 +355,18 @@ router.put('/:id', async (req, res) => {
 
         const [result] = await req.app.locals.db.query(
             `UPDATE cars SET 
-                brand = ?, 
-                model = ?, 
-                year = ?, 
-                license_plate = ?, 
-                color = ?, 
-                category = ?, 
-                daily_rate = ?, 
-                status = ?, 
-                image_url = ?, 
-                features = ?
+                brand = ?, model = ?, year = ?, license_plate = ?, color = ?, 
+                category = ?, daily_rate = ?, status = ?, image_url = ?, features = ?,
+                kilometers = ?, fuel_type = ?, fuel_level = ?, engine_size = ?,
+                transmission_type = ?, seats_count = ?, doors_count = ?, tank_capacity = ?,
+                vin_number = ?, registration_date = ?, insurance_expiry = ?, itp_expiry = ?
             WHERE id = ?`,
             [
-                brand, model, year, license_plate, color,
-                category, daily_rate, status, image_url, features,
-                req.params.id
+                brand, model, year, license_plate, color, category, daily_rate,
+                status, image_url, features, kilometers, fuel_type, fuel_level,
+                engine_size, transmission_type, seats_count, doors_count,
+                tank_capacity, vin_number, registration_date, insurance_expiry,
+                itp_expiry, req.params.id
             ]
         );
 
@@ -250,7 +379,7 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// PATCH car (update only provided fields)
+// PATCH car (update only provided fields including technical specs)
 router.patch('/:id', async (req, res) => {
     try {
         // Check if car exists
@@ -266,7 +395,12 @@ router.patch('/:id', async (req, res) => {
         // Build dynamic update query
         const allowedFields = [
             'brand', 'model', 'year', 'license_plate', 'color',
-            'category', 'daily_rate', 'status', 'image_url', 'features'
+            'category', 'daily_rate', 'status', 'image_url', 'features',
+            // Technical fields
+            'kilometers', 'fuel_type', 'fuel_level', 'engine_size',
+            'transmission_type', 'seats_count', 'doors_count', 'tank_capacity',
+            'vin_number', 'registration_date', 'insurance_expiry', 'itp_expiry',
+            'last_service_date', 'last_service_km', 'next_service_km'
         ];
 
         const updates = [];

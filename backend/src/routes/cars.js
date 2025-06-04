@@ -1,4 +1,4 @@
-// src/routes/cars.js - Updated with technical specifications
+// src/routes/cars.js - Updated with technical specifications and better error handling
 const express = require('express');
 const router = express.Router();
 
@@ -23,6 +23,7 @@ router.get('/:id/technical-sheet', async (req, res) => {
 
         res.json(car[0]);
     } catch (error) {
+        console.error('Error fetching technical sheet:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -33,6 +34,14 @@ router.patch('/:id/technical', async (req, res) => {
         const {
             kilometers,
             fuel_level,
+            fuel_type,
+            engine_size,
+            transmission_type,
+            seats_count,
+            doors_count,
+            tank_capacity,
+            vin_number,
+            registration_date,
             last_service_date,
             last_service_km,
             next_service_km,
@@ -41,6 +50,9 @@ router.patch('/:id/technical', async (req, res) => {
             notes,
             admin_id
         } = req.body;
+
+        console.log('Received technical update request for car:', req.params.id);
+        console.log('Update data:', req.body);
 
         // Check if car exists
         const [existing] = await req.app.locals.db.query(
@@ -52,73 +64,83 @@ router.patch('/:id/technical', async (req, res) => {
             return res.status(404).json({ error: 'Car not found' });
         }
 
-        // Build update query dynamically
+        // Build update query dynamically for cars table
         const updates = [];
         const values = [];
 
-        if (kilometers !== undefined) {
-            updates.push('kilometers = ?');
-            values.push(kilometers);
-        }
-        if (fuel_level !== undefined) {
-            updates.push('fuel_level = ?');
-            values.push(fuel_level);
-        }
-        if (last_service_date !== undefined) {
-            updates.push('last_service_date = ?');
-            values.push(last_service_date);
-        }
-        if (last_service_km !== undefined) {
-            updates.push('last_service_km = ?');
-            values.push(last_service_km);
-        }
-        if (next_service_km !== undefined) {
-            updates.push('next_service_km = ?');
-            values.push(next_service_km);
-        }
-        if (insurance_expiry !== undefined) {
-            updates.push('insurance_expiry = ?');
-            values.push(insurance_expiry);
-        }
-        if (itp_expiry !== undefined) {
-            updates.push('itp_expiry = ?');
-            values.push(itp_expiry);
-        }
+        const allowedFields = {
+            kilometers: kilometers,
+            fuel_level: fuel_level,
+            fuel_type: fuel_type,
+            engine_size: engine_size,
+            transmission_type: transmission_type,
+            seats_count: seats_count,
+            doors_count: doors_count,
+            tank_capacity: tank_capacity,
+            vin_number: vin_number,
+            registration_date: registration_date,
+            last_service_date: last_service_date,
+            last_service_km: last_service_km,
+            next_service_km: next_service_km,
+            insurance_expiry: insurance_expiry,
+            itp_expiry: itp_expiry
+        };
+
+        Object.entries(allowedFields).forEach(([field, value]) => {
+            if (value !== undefined && value !== null) {
+                updates.push(`${field} = ?`);
+                values.push(value);
+            }
+        });
 
         if (updates.length > 0) {
             // Update the car
             values.push(req.params.id);
-            await req.app.locals.db.query(
-                `UPDATE cars SET ${updates.join(', ')} WHERE id = ?`,
-                values
-            );
+            const updateQuery = `UPDATE cars SET ${updates.join(', ')} WHERE id = ?`;
+            console.log('Executing update query:', updateQuery);
+            console.log('With values:', values);
 
-            // Log the technical update in history
+            await req.app.locals.db.query(updateQuery, values);
+
+            // Try to log the technical update in history (optional - won't fail if table doesn't exist)
             if (kilometers !== undefined || fuel_level !== undefined) {
-                await req.app.locals.db.query(
-                    `INSERT INTO car_technical_history 
-                    (car_id, kilometers, fuel_level, notes, updated_by) 
-                    VALUES (?, ?, ?, ?, ?)`,
-                    [
-                        req.params.id,
-                        kilometers || existing[0].kilometers,
-                        fuel_level || existing[0].fuel_level,
-                        notes || null,
-                        admin_id || null
-                    ]
-                );
+                try {
+                    await req.app.locals.db.query(
+                        `INSERT INTO car_technical_history 
+                        (car_id, kilometers, fuel_level, notes, updated_by, created_at) 
+                        VALUES (?, ?, ?, ?, ?, NOW())`,
+                        [
+                            req.params.id,
+                            kilometers !== undefined ? kilometers : existing[0].kilometers,
+                            fuel_level !== undefined ? fuel_level : existing[0].fuel_level,
+                            notes || null,
+                            admin_id || null
+                        ]
+                    );
+                } catch (historyError) {
+                    console.warn('Could not log to technical history (table might not exist):', historyError.message);
+                    // Continue without failing - history logging is optional
+                }
             }
         }
 
-        res.json({ message: 'Technical data updated successfully' });
+        res.json({
+            message: 'Technical data updated successfully',
+            updatedFields: Object.keys(allowedFields).filter(key => allowedFields[key] !== undefined)
+        });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error updating technical data:', error);
+        res.status(500).json({
+            error: error.message,
+            details: 'Check server logs for more information'
+        });
     }
 });
 
 // Get technical history for a car
 router.get('/:id/technical-history', async (req, res) => {
     try {
+        // First check if the table exists
         const [history] = await req.app.locals.db.query(
             `SELECT 
                 cth.*,
@@ -133,7 +155,13 @@ router.get('/:id/technical-history', async (req, res) => {
 
         res.json(history);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error fetching technical history:', error);
+        // If table doesn't exist, return empty array
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.json([]);
+        } else {
+            res.status(500).json({ error: error.message });
+        }
     }
 });
 

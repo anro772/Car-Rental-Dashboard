@@ -23,10 +23,10 @@ import { useRouter } from 'src/routes/hooks';
 import { fCurrency } from 'src/utils/format-number';
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
-import type { Car } from 'src/services/carsService'; // Import the Car type
-import rentalsService, { RentalExtended } from 'src/services/rentalsService'; // Import rentals service
+import type { Car } from 'src/services/carsService';
+import rentalsService, { RentalExtended } from 'src/services/rentalsService';
+import { TechnicalSheetDialog } from './technical-sheet-dialog';
 
-// Status translation mapping
 const STATUS_TRANSLATIONS: Record<string, string> = {
     'available': 'Disponibil',
     'rented': 'Închiriat',
@@ -35,7 +35,6 @@ const STATUS_TRANSLATIONS: Record<string, string> = {
     'unknown': 'Necunoscut'
 };
 
-// Define props for the modal
 type GroupStockModalProps = {
     open: boolean;
     onClose: () => void;
@@ -43,7 +42,6 @@ type GroupStockModalProps = {
     cars: Car[];
     onEditCar: (car: Car) => void;
     onDeleteCar?: (carId: number) => Promise<void>;
-    // Optional prop to pass rental data if already available
     rentalData?: Record<number, RentalExtended>;
 };
 
@@ -51,7 +49,7 @@ export function GroupStockModal({
     open,
     onClose,
     groupName,
-    cars = [], // Default to empty array
+    cars = [],
     onEditCar,
     onDeleteCar,
     rentalData,
@@ -61,23 +59,22 @@ export function GroupStockModal({
     const [carsRentalData, setCarsRentalData] = useState<Record<number, RentalExtended>>({});
     const [loading, setLoading] = useState(false);
 
-    // Fetch rental information for cars when the modal opens
+    const [technicalSheetOpen, setTechnicalSheetOpen] = useState(false);
+    const [selectedCarForTechnical, setSelectedCarForTechnical] = useState<Car | null>(null);
+
     useEffect(() => {
         async function fetchRentalData() {
-            if (!open || rentalData) return; // Skip if modal not open or data already provided
+            if (!open || rentalData) return;
 
             setLoading(true);
             const rentalInfo: Record<number, RentalExtended> = {};
 
             try {
-                // Fetch active and pending rentals
                 const activeRentals = await rentalsService.getRentalsByStatus('active');
                 const pendingRentals = await rentalsService.getRentalsByStatus('pending');
 
-                // Combine all rentals
                 const allRentals = [...activeRentals, ...pendingRentals];
 
-                // Create lookup by car_id
                 allRentals.forEach(rental => {
                     rentalInfo[rental.car_id] = rental;
                 });
@@ -93,16 +90,15 @@ export function GroupStockModal({
         fetchRentalData();
     }, [open, rentalData]);
 
-    // Use provided rental data or the fetched data
     const rentalInfoData = rentalData || carsRentalData;
 
     const handleViewDetails = (carId: number) => {
         router.push(`/cars/${carId}`);
-        onClose(); // Close modal after navigation
+        onClose();
     };
 
     const handleEditClick = (car: Car) => {
-        onEditCar(car); // Trigger the edit handler passed from parent
+        onEditCar(car);
     };
 
     const handleDeleteClick = async (carId: number) => {
@@ -116,9 +112,17 @@ export function GroupStockModal({
         }
     };
 
-    // Helper to determine the displayed status based on database status and rental info
+    const handleTechnicalSheetClick = (car: Car) => {
+        setSelectedCarForTechnical(car);
+        setTechnicalSheetOpen(true);
+    };
+
+    const handleTechnicalSheetClose = () => {
+        setTechnicalSheetOpen(false);
+        setSelectedCarForTechnical(null);
+    };
+
     const getDisplayStatus = (car: Car): { status: string; color: "success" | "error" | "warning" | "default" } => {
-        // If car isn't rented, use the actual status
         if (car.status !== 'rented') {
             return {
                 status: car.status || 'unknown',
@@ -126,10 +130,8 @@ export function GroupStockModal({
             };
         }
 
-        // If car is rented, check if there's rental info to determine if it's pending
         const rental = rentalInfoData[car.id];
         if (rental) {
-            // If rental status is pending, display as pending
             if (rental.status === 'pending') {
                 return {
                     status: 'pending',
@@ -137,7 +139,6 @@ export function GroupStockModal({
                 };
             }
 
-            // Check if rental is future-dated (even if active)
             const startDate = new Date(rental.start_date);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -151,14 +152,12 @@ export function GroupStockModal({
             }
         }
 
-        // Default: just show as rented
         return {
             status: 'rented',
             color: 'error'
         };
     };
 
-    // Helper to get status color (used for non-rented cars)
     const getStatusColor = (status?: 'available' | 'rented' | 'maintenance' | 'pending'): "success" | "error" | "warning" | "default" => {
         switch (status) {
             case 'available': return 'success';
@@ -170,127 +169,147 @@ export function GroupStockModal({
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
-            <DialogTitle>
-                Detalii stoc: {groupName}
-                <IconButton
-                    aria-label="închide"
-                    onClick={onClose}
-                    sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
-                >
-                    <Iconify icon="eva:close-fill" />
-                </IconButton>
-            </DialogTitle>
+        <>
+            <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth scroll="paper">
+                <DialogTitle>
+                    Detalii stoc: {groupName}
+                    <IconButton
+                        aria-label="închide"
+                        onClick={onClose}
+                        sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+                    >
+                        <Iconify icon="eva:close-fill" />
+                    </IconButton>
+                </DialogTitle>
 
-            <DialogContent dividers>
-                {cars.length === 0 ? (
-                    <Typography sx={{ textAlign: 'center', py: 3 }}>
-                        Nu s-au găsit mașini individuale pentru acest grup.
-                    </Typography>
-                ) : (
-                    <>
-                        {loading && (
-                            <Box display="flex" justifyContent="center" my={2}>
-                                <CircularProgress size={24} />
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                    Încărcarea datelor de închiriere...
-                                </Typography>
-                            </Box>
-                        )}
+                <DialogContent dividers>
+                    {cars.length === 0 ? (
+                        <Typography sx={{ textAlign: 'center', py: 3 }}>
+                            Nu s-au găsit mașini individuale pentru acest grup.
+                        </Typography>
+                    ) : (
+                        <>
+                            {loading && (
+                                <Box display="flex" justifyContent="center" my={2}>
+                                    <CircularProgress size={24} />
+                                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                        Încărcarea datelor de închiriere...
+                                    </Typography>
+                                </Box>
+                            )}
 
-                        <TableContainer component={Paper} variant="outlined">
-                            <Table size="small">
-                                <TableHead sx={{ bgcolor: 'background.neutral' }}>
-                                    <TableRow>
-                                        <TableCell>Plăcuță de înmatriculare</TableCell>
-                                        <TableCell>Culoare</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell align="right">Tarif zilnic</TableCell>
-                                        <TableCell align="center">Acțiuni</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {cars.map((car) => {
-                                        const displayStatus = getDisplayStatus(car);
-                                        // Get translated status for display
-                                        const translatedStatus = STATUS_TRANSLATIONS[displayStatus.status] || displayStatus.status;
+                            <TableContainer component={Paper} variant="outlined">
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: 'background.neutral' }}>
+                                        <TableRow>
+                                            <TableCell>Plăcuță de înmatriculare</TableCell>
+                                            <TableCell>Culoare</TableCell>
+                                            <TableCell>Status</TableCell>
+                                            <TableCell align="right">Tarif zilnic</TableCell>
+                                            <TableCell align="center">Acțiuni</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {cars.map((car) => {
+                                            const displayStatus = getDisplayStatus(car);
+                                            const translatedStatus = STATUS_TRANSLATIONS[displayStatus.status] || displayStatus.status;
 
-                                        return (
-                                            <TableRow key={car.id} hover>
-                                                <TableCell component="th" scope="row">
-                                                    {car.license_plate || '-'}
-                                                </TableCell>
-                                                <TableCell>{car.color || '-'}</TableCell>
-                                                <TableCell>
-                                                    <Label color={displayStatus.color} variant="filled">
-                                                        {translatedStatus}
-                                                    </Label>
-                                                </TableCell>
-                                                <TableCell align="right">{fCurrency(car.daily_rate)}</TableCell>
-                                                <TableCell align="center">
-                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                        <Tooltip title="Vezi detalii">
-                                                            <IconButton size="small" onClick={() => handleViewDetails(car.id)}>
-                                                                <Iconify icon="eva:eye-fill" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title="Editează mașina">
-                                                            <IconButton size="small" onClick={() => handleEditClick(car)}>
-                                                                <Iconify icon="eva:edit-fill" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        {/* Delete button - only show if onDeleteCar prop is provided and car is not rented or pending */}
-                                                        {onDeleteCar && (
-                                                            <Tooltip title={
-                                                                displayStatus.status === 'rented' ? "Nu se pot șterge mașinile închiriate" :
-                                                                    displayStatus.status === 'pending' ? "Nu se pot șterge mașinile în așteptare" :
-                                                                        "Șterge mașina"
-                                                            }>
-                                                                <span> {/* Wrapper to maintain tooltip when button is disabled */}
+                                            return (
+                                                <TableRow key={car.id} hover>
+                                                    <TableCell component="th" scope="row">
+                                                        {car.license_plate || '-'}
+                                                    </TableCell>
+                                                    <TableCell>{car.color || '-'}</TableCell>
+                                                    <TableCell>
+                                                        <Label color={displayStatus.color} variant="filled">
+                                                            {translatedStatus}
+                                                        </Label>
+                                                    </TableCell>
+                                                    <TableCell align="right">{fCurrency(car.daily_rate)}</TableCell>
+                                                    <TableCell align="center">
+                                                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                            <Tooltip title="Vezi detalii">
+                                                                <IconButton size="small" onClick={() => handleViewDetails(car.id)}>
+                                                                    <Iconify icon="eva:eye-fill" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Fișă tehnică">
+                                                                <span>
                                                                     <IconButton
                                                                         size="small"
-                                                                        color="error"
-                                                                        onClick={() => handleDeleteClick(car.id)}
-                                                                        disabled={
-                                                                            displayStatus.status === 'rented' ||
-                                                                            displayStatus.status === 'pending' ||
-                                                                            deletingCarId === car.id
-                                                                        }
+                                                                        color="info"
+                                                                        onClick={() => handleTechnicalSheetClick(car)}
+                                                                        disabled={false}
                                                                     >
-                                                                        {deletingCarId === car.id ? (
-                                                                            <CircularProgress size={20} />
-                                                                        ) : (
-                                                                            <Iconify icon="eva:trash-2-outline" />
-                                                                        )}
+                                                                        <Iconify icon="eva:file-text-outline" />
                                                                     </IconButton>
                                                                 </span>
                                                             </Tooltip>
-                                                        )}
-                                                    </Stack>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                                            <Tooltip title="Editează mașina">
+                                                                <IconButton size="small" onClick={() => handleEditClick(car)}>
+                                                                    <Iconify icon="eva:edit-fill" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            {onDeleteCar && (
+                                                                <Tooltip title={
+                                                                    displayStatus.status === 'rented' ? "Nu se pot șterge mașinile închiriate" :
+                                                                        displayStatus.status === 'pending' ? "Nu se pot șterge mașinile în așteptare" :
+                                                                            "Șterge mașina"
+                                                                }>
+                                                                    <span>
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            color="error"
+                                                                            onClick={() => handleDeleteClick(car.id)}
+                                                                            disabled={
+                                                                                displayStatus.status === 'rented' ||
+                                                                                displayStatus.status === 'pending' ||
+                                                                                deletingCarId === car.id
+                                                                            }
+                                                                        >
+                                                                            {deletingCarId === car.id ? (
+                                                                                <CircularProgress size={20} />
+                                                                            ) : (
+                                                                                <Iconify icon="eva:trash-2-outline" />
+                                                                            )}
+                                                                        </IconButton>
+                                                                    </span>
+                                                                </Tooltip>
+                                                            )}
+                                                        </Stack>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
 
-                        {/* Information about deleting cars */}
-                        {onDeleteCar && cars.some(car => {
-                            const displayStatus = getDisplayStatus(car);
-                            return displayStatus.status === 'rented' || displayStatus.status === 'pending';
-                        }) && (
-                                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 2 }}>
-                                    * Mașinile cu statutul „închiriat" sau „în așteptare" nu pot fi șterse. Acestea trebuie mai întâi returnate sau rezervarea lor trebuie completată.
-                                </Typography>
-                            )}
-                    </>
-                )}
-            </DialogContent>
+                            {onDeleteCar && cars.some(car => {
+                                const displayStatus = getDisplayStatus(car);
+                                return displayStatus.status === 'rented' || displayStatus.status === 'pending';
+                            }) && (
+                                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 2 }}>
+                                        * Mașinile cu statutul „închiriat" sau „în așteptare" nu pot fi șterse. Acestea trebuie mai întâi returnate sau rezervarea lor trebuie completată.
+                                    </Typography>
+                                )}
+                        </>
+                    )}
+                </DialogContent>
 
-            <DialogActions>
-                <Button onClick={onClose}>Închide</Button>
-            </DialogActions>
-        </Dialog>
+                <DialogActions>
+                    <Button onClick={onClose}>Închide</Button>
+                </DialogActions>
+            </Dialog>
+
+            {selectedCarForTechnical && (
+                <TechnicalSheetDialog
+                    open={technicalSheetOpen}
+                    onClose={handleTechnicalSheetClose}
+                    carId={selectedCarForTechnical.id}
+                    carName={`${selectedCarForTechnical.brand} ${selectedCarForTechnical.model} ${selectedCarForTechnical.year} (${selectedCarForTechnical.license_plate})`}
+                />
+            )}
+        </>
     );
 }

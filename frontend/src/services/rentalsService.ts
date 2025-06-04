@@ -28,6 +28,7 @@ export interface RentalExtended extends Rental {
     customer_email?: string;
     customer_phone?: string;
     days_overdue?: number;
+    customer_avatar_url?: string | null;
 }
 
 

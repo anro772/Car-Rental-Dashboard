@@ -101,6 +101,7 @@ type RentalAddModalProps = {
     onClose: () => void;
     onSuccess: () => void;
     customerId?: number | null;
+    carId?: number | null; // Add this line
 };
 
 export function RentalAddModal({ open, onClose, onSuccess, customerId = null }: RentalAddModalProps) {

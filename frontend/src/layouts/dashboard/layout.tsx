@@ -73,16 +73,16 @@ export function DashboardLayout({ sx, children, header }: DashboardLayoutProps) 
                       href: '/',
                       icon: <Iconify width={22} icon="solar:home-angle-bold-duotone" />,
                     },
-                    {
-                      label: 'Profil',
-                      href: '#',
-                      icon: <Iconify width={22} icon="solar:shield-keyhole-bold-duotone" />,
-                    },
-                    {
-                      label: 'Setări',
-                      href: '#',
-                      icon: <Iconify width={22} icon="solar:settings-bold-duotone" />,
-                    },
+                    // {
+                    //   label: 'Profil',
+                    //   href: '#',
+                    //   icon: <Iconify width={22} icon="solar:shield-keyhole-bold-duotone" />,
+                    // },
+                    // {
+                    //   label: 'Setări',
+                    //   href: '#',
+                    //   icon: <Iconify width={22} icon="solar:settings-bold-duotone" />,
+                    // },
                   ]}
                 />
               </Box>

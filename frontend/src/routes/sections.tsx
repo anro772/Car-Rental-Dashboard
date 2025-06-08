@@ -13,7 +13,6 @@ import { CarDetailsView } from 'src/sections/cars/product-details-view'; // Impo
 // ----------------------------------------------------------------------
 
 export const HomePage = lazy(() => import('src/pages/home'));
-export const BlogPage = lazy(() => import('src/pages/blog'));
 export const UserPage = lazy(() => import('src/pages/user'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
 export const ProductsPage = lazy(() => import('src/pages/cars'));
@@ -52,7 +51,6 @@ export function Router() {
         { path: 'user', element: <UserPage /> },
         { path: 'cars', element: <ProductsPage /> },
         { path: 'cars/:id', element: <CarDetailsView /> },
-        { path: 'blog', element: <BlogPage /> },
         { path: 'rental', element: <RentalPage /> },
       ],
     },

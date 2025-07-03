@@ -143,3 +143,5 @@ Frontend-ul va porni pe portul 3039 (port vite) și va deschide automat aplicaț
 ### Utilizare tehnologii
 - **Backend**: Express.js pentru API-uri RESTful, MySQL pentru baza de date
 - **Frontend**: React cu Vite pentru performanță, Material UI pentru componente de interfață
+
+TEST

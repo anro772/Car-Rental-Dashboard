@@ -15,7 +15,6 @@ import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
-// import Divider from '@mui/material/Divider'; // Not used
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Table from '@mui/material/Table';
@@ -95,11 +94,17 @@ const formatDateRo = (dateString: string | undefined): string => {
     }
 };
 
+// Fixed date formatting to prevent timezone offset issues
 const formatDateForInput = (dateString: string | undefined): string => {
     if (!dateString) return '';
     try {
-        const date = new Date(dateString);
-        return date.toISOString().split('T')[0];
+        // Create date directly from the string assuming it's already in YYYY-MM-DD format
+        // or convert properly without timezone interference
+        const date = new Date(dateString + 'T00:00:00'); // Add time to prevent timezone issues
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     } catch {
         return '';
     }
@@ -108,7 +113,7 @@ const formatDateForInput = (dateString: string | undefined): string => {
 const calculateDaysUntilExpiry = (expiryDate: string | undefined): { days: number; status: 'expired' | 'warning' | 'ok' } => {
     if (!expiryDate) return { days: 0, status: 'ok' };
     try {
-        const expiry = new Date(expiryDate);
+        const expiry = new Date(expiryDate + 'T00:00:00'); // Add time to prevent timezone issues
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         expiry.setHours(0, 0, 0, 0);
@@ -138,6 +143,7 @@ export function TechnicalSheetDialog({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [isEditingDocs, setIsEditingDocs] = useState(false); // Separate state for documentation editing
     const [generatingPDF, setGeneratingPDF] = useState(false);
 
     const [editData, setEditData] = useState<TechnicalUpdateData>({});
@@ -175,11 +181,10 @@ export function TechnicalSheetDialog({
     };
 
     useEffect(() => {
-        if (open && carId) { // Ensure fetchData is called only when dialog is open and carId is valid
+        if (open && carId) {
             fetchData();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, carId]); // Removed fetchData from dependencies as it causes infinite loop if not memoized
+    }, [open, carId]);
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
@@ -194,10 +199,10 @@ export function TechnicalSheetDialog({
 
             const dataToSend: TechnicalUpdateData = {
                 ...editData,
-                admin_id: 1 // Assuming admin_id is 1, replace with actual admin ID from auth context
+                admin_id: 1
             };
 
-            // Ensure dates are in YYYY-MM-DD format
+            // Ensure dates are in YYYY-MM-DD format without timezone conversion
             if (dataToSend.last_service_date) {
                 dataToSend.last_service_date = dataToSend.last_service_date.split('T')[0];
             }
@@ -212,6 +217,7 @@ export function TechnicalSheetDialog({
 
             await fetchData();
             setIsEditing(false);
+            setIsEditingDocs(false);
         } catch (err) {
             console.error('Error updating technical data:', err);
             setError('Nu s-au putut salva modificările.');
@@ -233,6 +239,7 @@ export function TechnicalSheetDialog({
             });
         }
         setIsEditing(false);
+        setIsEditingDocs(false);
     };
 
     const handleGeneratePDF = async () => {
@@ -263,7 +270,7 @@ export function TechnicalSheetDialog({
         onClose();
     };
 
-    if (!open) return null; // Render nothing if not open
+    if (!open) return null;
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth scroll="paper">
@@ -553,21 +560,54 @@ export function TechnicalSheetDialog({
 
                         <TabPanel value={tabValue} index={2}>
                             <Grid container spacing={3}>
+                                <Grid item xs={12}>
+                                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                                        {!isEditingDocs ? (
+                                            <Button
+                                                variant="contained"
+                                                onClick={() => setIsEditingDocs(true)}
+                                                startIcon={<Iconify icon="eva:edit-outline" />}
+                                            >
+                                                Modifică Date Documentație
+                                            </Button>
+                                        ) : (
+                                            <Stack direction="row" spacing={2}>
+                                                <Button
+                                                    variant="outlined"
+                                                    onClick={handleCancelEdit}
+                                                    disabled={saving}
+                                                >
+                                                    Anulează
+                                                </Button>
+                                                <Button
+                                                    variant="contained"
+                                                    color="primary"
+                                                    onClick={handleSave}
+                                                    disabled={saving}
+                                                    startIcon={saving ? <CircularProgress color="inherit" size={16} /> : <Iconify icon="eva:save-outline" />}
+                                                >
+                                                    {saving ? 'Se salvează...' : 'Salvează Datele'}
+                                                </Button>
+                                            </Stack>
+                                        )}
+                                    </Box>
+                                </Grid>
+
                                 <Grid item xs={12} sm={6}>
                                     <Card>
                                         <CardHeader title="Asigurare (RCA)" />
                                         <CardContent>
-                                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={isEditing ? 2 : 0}>
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                                                 <Box>
                                                     <Typography variant="body2" color="text.secondary">
                                                         Expiră la:
                                                     </Typography>
                                                     <Typography variant="h6">
-                                                        {formatDateRo(isEditing && editData.insurance_expiry ? editData.insurance_expiry : technicalData.insurance_expiry)}
+                                                        {formatDateRo(technicalData.insurance_expiry)}
                                                     </Typography>
                                                 </Box>
-                                                {(isEditing && editData.insurance_expiry ? editData.insurance_expiry : technicalData.insurance_expiry) && (() => {
-                                                    const expiryInfo = calculateDaysUntilExpiry(isEditing && editData.insurance_expiry ? editData.insurance_expiry : technicalData.insurance_expiry);
+                                                {technicalData.insurance_expiry && (() => {
+                                                    const expiryInfo = calculateDaysUntilExpiry(technicalData.insurance_expiry);
                                                     return (
                                                         <Chip
                                                             label={
@@ -584,7 +624,7 @@ export function TechnicalSheetDialog({
                                                     );
                                                 })()}
                                             </Box>
-                                            {isEditing && (
+                                            {isEditingDocs && (
                                                 <TextField
                                                     label="Noua Dată Expirare Asigurare"
                                                     type="date"
@@ -592,6 +632,7 @@ export function TechnicalSheetDialog({
                                                     onChange={(e) => setEditData({ ...editData, insurance_expiry: e.target.value })}
                                                     InputLabelProps={{ shrink: true }}
                                                     fullWidth
+                                                    variant="outlined"
                                                 />
                                             )}
                                         </CardContent>
@@ -602,17 +643,17 @@ export function TechnicalSheetDialog({
                                     <Card>
                                         <CardHeader title="Inspecție Tehnică Periodică (ITP)" />
                                         <CardContent>
-                                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={isEditing ? 2 : 0}>
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                                                 <Box>
                                                     <Typography variant="body2" color="text.secondary">
                                                         Expiră la:
                                                     </Typography>
                                                     <Typography variant="h6">
-                                                        {formatDateRo(isEditing && editData.itp_expiry ? editData.itp_expiry : technicalData.itp_expiry)}
+                                                        {formatDateRo(technicalData.itp_expiry)}
                                                     </Typography>
                                                 </Box>
-                                                {(isEditing && editData.itp_expiry ? editData.itp_expiry : technicalData.itp_expiry) && (() => {
-                                                    const expiryInfo = calculateDaysUntilExpiry(isEditing && editData.itp_expiry ? editData.itp_expiry : technicalData.itp_expiry);
+                                                {technicalData.itp_expiry && (() => {
+                                                    const expiryInfo = calculateDaysUntilExpiry(technicalData.itp_expiry);
                                                     return (
                                                         <Chip
                                                             label={
@@ -629,7 +670,7 @@ export function TechnicalSheetDialog({
                                                     );
                                                 })()}
                                             </Box>
-                                            {isEditing && (
+                                            {isEditingDocs && (
                                                 <TextField
                                                     label="Noua Dată Expirare ITP"
                                                     type="date"
@@ -637,35 +678,12 @@ export function TechnicalSheetDialog({
                                                     onChange={(e) => setEditData({ ...editData, itp_expiry: e.target.value })}
                                                     InputLabelProps={{ shrink: true }}
                                                     fullWidth
+                                                    variant="outlined"
                                                 />
                                             )}
                                         </CardContent>
                                     </Card>
                                 </Grid>
-                                {isEditing && ( // Show save/cancel only when editing this tab's specific fields
-                                    <Grid item xs={12}>
-                                        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                                            <Stack direction="row" spacing={2}>
-                                                <Button
-                                                    variant="outlined"
-                                                    onClick={handleCancelEdit} // This will reset all edit fields
-                                                    disabled={saving}
-                                                >
-                                                    Anulează Modificările
-                                                </Button>
-                                                <Button
-                                                    variant="contained"
-                                                    color="primary"
-                                                    onClick={handleSave} // This will save all edit fields
-                                                    disabled={saving}
-                                                    startIcon={saving ? <CircularProgress color="inherit" size={16} /> : <Iconify icon="eva:save-outline" />}
-                                                >
-                                                    {saving ? 'Se salvează...' : 'Salvează Datele Documentației'}
-                                                </Button>
-                                            </Stack>
-                                        </Box>
-                                    </Grid>
-                                )}
                             </Grid>
                         </TabPanel>
 
@@ -683,32 +701,82 @@ export function TechnicalSheetDialog({
                                                 <TableHead>
                                                     <TableRow>
                                                         <TableCell>Data</TableCell>
-                                                        <TableCell>Kilometraj</TableCell>
-                                                        <TableCell>Combustibil</TableCell>
-                                                        <TableCell>Note</TableCell>
+                                                        <TableCell>Kilometraj Curent</TableCell>
+                                                        <TableCell>Combustibil Curent</TableCell>
+                                                        <TableCell>Modificări Efectuate</TableCell>
                                                         <TableCell>Modificat de</TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
-                                                    {history.map((entry) => (
-                                                        <TableRow key={entry.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                                                            <TableCell component="th" scope="row">
-                                                                {formatDateRo(entry.created_at)} <Typography variant="caption" display="block">{new Date(entry.created_at).toLocaleTimeString('ro-RO')}</Typography>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {entry.kilometers != null ? `${entry.kilometers} km` : '-'}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {entry.fuel_level != null ? `${entry.fuel_level}%` : '-'}
-                                                            </TableCell>
-                                                            <TableCell sx={{ maxWidth: 300, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                                                {entry.notes || '-'}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {entry.updated_by_name || `Admin ID: ${entry.updated_by || 'N/A'}`}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
+                                                    {history.map((entry) => {
+                                                        // Parse notes to extract user notes and changes
+                                                        const notes = entry.notes || '';
+                                                        const userNotes = notes.includes(' | Modificări: ')
+                                                            ? notes.split(' | Modificări: ')[0]
+                                                            : notes.includes('Modificări: ')
+                                                                ? ''
+                                                                : notes;
+                                                        const changes = notes.includes('Modificări: ')
+                                                            ? notes.split('Modificări: ')[1]
+                                                            : '';
+
+                                                        return (
+                                                            <TableRow key={entry.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                                                                <TableCell component="th" scope="row" sx={{ minWidth: 120 }}>
+                                                                    <Typography variant="body2">
+                                                                        {formatDateRo(entry.created_at)}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        {new Date(entry.created_at).toLocaleTimeString('ro-RO')}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Typography variant="body2">
+                                                                        {entry.kilometers != null ? `${entry.kilometers} km` : '-'}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Typography variant="body2">
+                                                                        {entry.fuel_level != null ? `${entry.fuel_level}%` : '-'}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell sx={{ maxWidth: 400, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                                    {changes && (
+                                                                        <Box sx={{ mb: userNotes ? 1 : 0 }}>
+                                                                            <Typography variant="body2" color="primary.main" sx={{ fontWeight: 'medium' }}>
+                                                                                Schimbări:
+                                                                            </Typography>
+                                                                            {changes.split('; ').map((change, idx) => (
+                                                                                <Typography key={idx} variant="body2" component="div" sx={{ ml: 1, mt: 0.5 }}>
+                                                                                    • {change}
+                                                                                </Typography>
+                                                                            ))}
+                                                                        </Box>
+                                                                    )}
+                                                                    {userNotes && (
+                                                                        <Box>
+                                                                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>
+                                                                                Note:
+                                                                            </Typography>
+                                                                            <Typography variant="body2" sx={{ ml: 1, fontStyle: 'italic' }}>
+                                                                                {userNotes}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    )}
+                                                                    {!changes && !userNotes && (
+                                                                        <Typography variant="body2" color="text.secondary">
+                                                                            -
+                                                                        </Typography>
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Typography variant="body2">
+                                                                        {entry.updated_by_name || `Admin ID: ${entry.updated_by || 'N/A'}`}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
                                                 </TableBody>
                                             </Table>
                                         </TableContainer>

@@ -1,8 +1,27 @@
-// src/routes/cars.js - Updated with technical specifications and better error handling
+// src/routes/cars.js - MINIMAL changes - only technical sheet endpoints
 const express = require('express');
 const router = express.Router();
 
-// GET technical sheet for a specific car
+// Helper function to format dates consistently (YYYY-MM-DD) - ONLY for technical sheet
+const formatDateForDB = (dateString) => {
+    if (!dateString) return null;
+    try {
+        // Ensure we get a consistent YYYY-MM-DD format
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return null;
+
+        // Get the date parts in local timezone to avoid offset issues
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+    } catch {
+        return null;
+    }
+};
+
+// GET technical sheet for a specific car - MODIFIED for date fix
 router.get('/:id/technical-sheet', async (req, res) => {
     try {
         const [car] = await req.app.locals.db.query(
@@ -21,14 +40,29 @@ router.get('/:id/technical-sheet', async (req, res) => {
             return res.status(404).json({ error: 'Car not found' });
         }
 
-        res.json(car[0]);
+        // Format dates properly for frontend - ONLY for technical sheet
+        const carData = car[0];
+        if (carData.insurance_expiry) {
+            carData.insurance_expiry = formatDateForDB(carData.insurance_expiry);
+        }
+        if (carData.itp_expiry) {
+            carData.itp_expiry = formatDateForDB(carData.itp_expiry);
+        }
+        if (carData.last_service_date) {
+            carData.last_service_date = formatDateForDB(carData.last_service_date);
+        }
+        if (carData.registration_date) {
+            carData.registration_date = formatDateForDB(carData.registration_date);
+        }
+
+        res.json(carData);
     } catch (error) {
         console.error('Error fetching technical sheet:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Update technical data for a car
+// Update technical data for a car - MODIFIED for date fix
 router.patch('/:id/technical', async (req, res) => {
     try {
         const {
@@ -78,12 +112,12 @@ router.patch('/:id/technical', async (req, res) => {
             doors_count: doors_count,
             tank_capacity: tank_capacity,
             vin_number: vin_number,
-            registration_date: registration_date,
-            last_service_date: last_service_date,
+            registration_date: formatDateForDB(registration_date), // Fixed date handling
+            last_service_date: formatDateForDB(last_service_date),   // Fixed date handling
             last_service_km: last_service_km,
             next_service_km: next_service_km,
-            insurance_expiry: insurance_expiry,
-            itp_expiry: itp_expiry
+            insurance_expiry: formatDateForDB(insurance_expiry),     // Fixed date handling
+            itp_expiry: formatDateForDB(itp_expiry)                  // Fixed date handling
         };
 
         Object.entries(allowedFields).forEach(([field, value]) => {
@@ -102,25 +136,56 @@ router.patch('/:id/technical', async (req, res) => {
 
             await req.app.locals.db.query(updateQuery, values);
 
-            // Try to log the technical update in history (optional - won't fail if table doesn't exist)
-            if (kilometers !== undefined || fuel_level !== undefined) {
-                try {
+            // Try to log the technical update in history with detailed changes
+            try {
+                // Build a detailed change log
+                const changes = [];
+                const oldCar = existing[0];
+
+                // Track all changed fields with old and new values
+                if (kilometers !== undefined && kilometers !== oldCar.kilometers) {
+                    changes.push(`Kilometraj: ${oldCar.kilometers || 'N/A'} → ${kilometers} km`);
+                }
+                if (fuel_level !== undefined && fuel_level !== oldCar.fuel_level) {
+                    changes.push(`Combustibil: ${oldCar.fuel_level || 'N/A'}% → ${fuel_level}%`);
+                }
+                if (last_service_date !== undefined && formatDateForDB(last_service_date) !== formatDateForDB(oldCar.last_service_date)) {
+                    changes.push(`Data service: ${formatDateForDB(oldCar.last_service_date) || 'N/A'} → ${formatDateForDB(last_service_date) || 'N/A'}`);
+                }
+                if (last_service_km !== undefined && last_service_km !== oldCar.last_service_km) {
+                    changes.push(`KM service: ${oldCar.last_service_km || 'N/A'} → ${last_service_km} km`);
+                }
+                if (next_service_km !== undefined && next_service_km !== oldCar.next_service_km) {
+                    changes.push(`Următorul service: ${oldCar.next_service_km || 'N/A'} → ${next_service_km} km`);
+                }
+                if (insurance_expiry !== undefined && formatDateForDB(insurance_expiry) !== formatDateForDB(oldCar.insurance_expiry)) {
+                    changes.push(`Asigurare: ${formatDateForDB(oldCar.insurance_expiry) || 'N/A'} → ${formatDateForDB(insurance_expiry) || 'N/A'}`);
+                }
+                if (itp_expiry !== undefined && formatDateForDB(itp_expiry) !== formatDateForDB(oldCar.itp_expiry)) {
+                    changes.push(`ITP: ${formatDateForDB(oldCar.itp_expiry) || 'N/A'} → ${formatDateForDB(itp_expiry) || 'N/A'}`);
+                }
+
+                // Only log if there are actual changes
+                if (changes.length > 0) {
+                    const changeLog = changes.join('; ');
+                    const fullNotes = notes ? `${notes} | Modificări: ${changeLog}` : `Modificări: ${changeLog}`;
+
                     await req.app.locals.db.query(
                         `INSERT INTO car_technical_history 
                         (car_id, kilometers, fuel_level, notes, updated_by, created_at) 
                         VALUES (?, ?, ?, ?, ?, NOW())`,
                         [
                             req.params.id,
-                            kilometers !== undefined ? kilometers : existing[0].kilometers,
-                            fuel_level !== undefined ? fuel_level : existing[0].fuel_level,
-                            notes || null,
+                            kilometers !== undefined ? kilometers : oldCar.kilometers,
+                            fuel_level !== undefined ? fuel_level : oldCar.fuel_level,
+                            fullNotes,
                             admin_id || null
                         ]
                     );
-                } catch (historyError) {
-                    console.warn('Could not log to technical history (table might not exist):', historyError.message);
-                    // Continue without failing - history logging is optional
                 }
+            } catch (historyError) {
+                console.warn('Could not log to technical history (table might not exist):', historyError.message);
+                // Continue without failing - history logging is optional
             }
         }
 
@@ -137,7 +202,7 @@ router.patch('/:id/technical', async (req, res) => {
     }
 });
 
-// Get technical history for a car
+// Get technical history for a car - UNCHANGED
 router.get('/:id/technical-history', async (req, res) => {
     try {
         // First check if the table exists
@@ -165,10 +230,11 @@ router.get('/:id/technical-history', async (req, res) => {
     }
 });
 
+// *** ALL OTHER ROUTES REMAIN COMPLETELY UNCHANGED ***
 // *** IMPORTANT: Route order matters in Express! ***
 // Make sure specific routes come before parameterized routes
 
-// GET available cars
+// GET available cars - UNCHANGED
 router.get('/status/available', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -180,7 +246,7 @@ router.get('/status/available', async (req, res) => {
     }
 });
 
-// GET pending cars
+// GET pending cars - UNCHANGED
 router.get('/status/pending', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -192,7 +258,7 @@ router.get('/status/pending', async (req, res) => {
     }
 });
 
-// GET rented cars
+// GET rented cars - UNCHANGED
 router.get('/status/rented', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -204,7 +270,7 @@ router.get('/status/rented', async (req, res) => {
     }
 });
 
-// GET maintenance cars
+// GET maintenance cars - UNCHANGED
 router.get('/status/maintenance', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -216,7 +282,7 @@ router.get('/status/maintenance', async (req, res) => {
     }
 });
 
-// GET cars by category
+// GET cars by category - UNCHANGED
 router.get('/category/:category', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -229,7 +295,7 @@ router.get('/category/:category', async (req, res) => {
     }
 });
 
-// Direct endpoint to update car status
+// Direct endpoint to update car status - UNCHANGED
 router.patch('/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
@@ -269,7 +335,7 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
-// GET all cars
+// GET all cars - UNCHANGED
 router.get('/', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query('SELECT * FROM cars');
@@ -279,7 +345,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET a single car by ID
+// GET a single car by ID - UNCHANGED
 router.get('/:id', async (req, res) => {
     try {
         const [rows] = await req.app.locals.db.query(
@@ -297,7 +363,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST new car with technical specifications
+// POST new car with technical specifications - UNCHANGED
 router.post('/', async (req, res) => {
     try {
         const {
@@ -335,7 +401,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update similar car images
+// Update similar car images - UNCHANGED
 router.post('/update-similar-images', async (req, res) => {
     const { brand, model, year, image_url } = req.body;
 
@@ -359,7 +425,7 @@ router.post('/update-similar-images', async (req, res) => {
     }
 });
 
-// PUT/UPDATE car with technical specifications
+// PUT/UPDATE car with technical specifications - UNCHANGED
 router.put('/:id', async (req, res) => {
     try {
         const {
@@ -407,7 +473,7 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// PATCH car (update only provided fields including technical specs)
+// PATCH car (update only provided fields including technical specs) - UNCHANGED
 router.patch('/:id', async (req, res) => {
     try {
         // Check if car exists
@@ -462,7 +528,7 @@ router.patch('/:id', async (req, res) => {
     }
 });
 
-// DELETE car
+// DELETE car - UNCHANGED
 router.delete('/:id', async (req, res) => {
     try {
         // Check if car exists

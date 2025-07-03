@@ -157,11 +157,11 @@ async function createTables(pool) {
         }
 
         if (carCount[0].count === 0) {
-            console.log('No cars found. Inserting sample data with complete technical specs and accurate rental statuses for 2025-05-29...');
-            // Car statuses are set based on their rental schedule around 2025-05-29
-            // 'rented': Actively rented on 2025-05-29
-            // 'pending': Next rental starts shortly after 2025-05-29
-            // 'available': Not rented on 2025-05-29 and no immediate pending rental
+            console.log('No cars found. Inserting sample data with complete technical specs and accurate rental statuses for 2025-06-16...');
+            // Car statuses are set based on their rental schedule around 2025-06-16
+            // 'rented': Actively rented on 2025-06-16
+            // 'pending': Next rental starts shortly after 2025-06-16
+            // 'available': Not rented on 2025-06-16 and no immediate pending rental
             // 'maintenance': Undergoing maintenance
 
             await pool.query(`
@@ -169,31 +169,31 @@ async function createTables(pool) {
                     kilometers, fuel_type, fuel_level, engine_size, transmission_type, seats_count, doors_count, tank_capacity,
                     last_service_date, last_service_km, next_service_km, vin_number, registration_date, insurance_expiry, itp_expiry) VALUES
                 
-                -- Car ID 1: Audi A4 Gray - Status: rented on 2025-05-29
+                -- Car ID 1: Audi A4 Gray - Status: rented on 2025-06-16
                 ('Audi', 'A4', 2022, 'B101AUD', 'Gray', 'Sedan', 70.00, 'rented', '/src/assets/cars/audi-a4.jpeg', 
                  'Navigație, Scaune încălzite, Bluetooth, Climatizare automată', 
                  15420, 'benzina', 70, '2.0 TFSI', 'automat', 5, 4, 54,
                  '2024-11-15', 15000, 25000, 'WAUEF48H55A123456', '2022-03-15', '2025-03-15', '2025-03-20'),
                 
-                -- Car ID 2: Audi A4 Black - Status: available on 2025-05-29
+                -- Car ID 2: Audi A4 Black - Status: available on 2025-06-16
                 ('Audi', 'A4', 2023, 'B102AUD', 'Black', 'Sedan', 72.00, 'available', '/src/assets/cars/audi-a4.jpeg', 
                  'Navigație, Scaune încălzite, Bluetooth, Climatizare automată, Pilot automat adaptiv', 
                  8200, 'motorina', 90, '2.0 TDI', 'automat', 5, 4, 54,
                  '2024-10-20', 8000, 18000, 'WAUEF48H56A789012', '2023-01-10', '2026-01-10', '2026-01-15'),
                 
-                -- Car ID 3: Audi A4 White - Status: pending on 2025-05-29
+                -- Car ID 3: Audi A4 White - Status: pending on 2025-06-16
                 ('Audi', 'A4', 2022, 'B103AUD', 'White', 'Sedan', 70.00, 'pending', '/src/assets/cars/audi-a4.jpeg', 
                  'Navigație, Scaune încălzite, Bluetooth, Climatizare automată, Cameră marșarier', 
                  22000, 'benzina', 80, '2.0 TFSI', 'automat', 5, 4, 54,
                  '2024-09-10', 21500, 31500, 'WAUEF48H55A345678', '2022-05-20', '2025-05-20', '2025-05-25'),
                 
-                -- Car ID 4: BMW X5 White - Status: available on 2025-05-29
+                -- Car ID 4: BMW X5 White - Status: available on 2025-06-16
                 ('BMW', 'X5', 2023, 'B201BMW', 'White', 'SUV', 95.00, 'available', '/src/assets/cars/bmw-x5.jpeg', 
                  'Pachet M Sport, Cameră 360, Head-up display, Sistem audio premium', 
                  5600, 'hybrid', 75, '3.0 xDrive45e', 'automat', 5, 5, 69,
                  '2024-12-01', 5000, 15000, 'WBAHC01090B123456', '2023-02-28', '2026-02-28', '2026-03-05'),
                 
-                -- Car ID 5: BMW X5 Black - Status: rented on 2025-05-29
+                -- Car ID 5: BMW X5 Black - Status: rented on 2025-06-16
                 ('BMW', 'X5', 2022, 'B202BMW', 'Black', 'SUV', 90.00, 'rented', '/src/assets/cars/bmw-x5.jpeg', 
                  'Cameră 360, Head-up display, Sistem audio premium', 
                  22300, 'motorina', 60, '3.0d xDrive', 'automat', 5, 5, 83,
@@ -205,7 +205,7 @@ async function createTables(pool) {
                  12800, 'benzina', 30, '3.0i xDrive', 'automat', 5, 5, 83,
                  '2025-05-15', 12000, 22000, 'WBAHC01091B345678', '2023-04-10', '2026-04-10', '2026-04-15'),
                 
-                -- Car ID 7: Chevrolet Equinox Black - Status: available
+                -- Car ID 7: Chevrolet Equinox Black - Status: pending
                 ('Chevrolet', 'Equinox', 2022, 'B301CHV', 'Black', 'SUV', 55.00, 'available', '/src/assets/cars/chevrolet-equinox.jpeg', 
                  'Android Auto, Apple CarPlay, Scaune încălzite', 
                  28500, 'benzina', 70, '1.5 Turbo', 'automat', 5, 5, 63,
@@ -427,88 +427,88 @@ async function createTables(pool) {
                 console.log('Romanian technical history data inserted/updated successfully');
             }
 
-            // Insert ACCURATE rental data around May 29, 2025. No overlaps per car.
+            // Insert ACCURATE rental data around June 16, 2025. No overlaps per car.
             // KM and Fuel levels are illustrative. Active/Pending rentals have NULL for end_km/end_fuel.
-            console.log('Creating accurate rental data around May 29, 2025...');
+            console.log('Creating accurate rental data around June 16, 2025...');
             await pool.query(`
                 INSERT INTO rentals (car_id, customer_id, start_date, end_date, status, total_cost, payment_status, notes, start_km, end_km, start_fuel_level, end_fuel_level) VALUES
-                -- CAR ID 1: Audi A4 Gray (Status: rented on 2025-05-29)
-                (1, 1, '2025-05-15', '2025-05-20', 'completed', 350.00, 'paid', 'Client mulțumit, călătorie business.', 15000, 15420, 100, 70),
-                (1, 2, '2025-05-27', '2025-06-01', 'active', 350.00, 'paid', 'Închiriere de weekend prelungit.', 15450, NULL, 100, NULL),
-                (1, 3, '2025-06-05', '2025-06-10', 'pending', 350.00, 'unpaid', 'Rezervare pentru vacanță.', NULL, NULL, NULL, NULL),
+                -- CAR ID 1: Audi A4 Gray (Status: rented on 2025-06-16)
+                (1, 1, '2025-06-01', '2025-06-06', 'completed', 350.00, 'paid', 'Client mulțumit, călătorie business.', 15000, 15420, 100, 70),
+                (1, 2, '2025-06-14', '2025-06-19', 'active', 350.00, 'paid', 'Închiriere de weekend prelungit.', 15450, NULL, 100, NULL),
+                (1, 3, '2025-06-22', '2025-06-27', 'pending', 350.00, 'unpaid', 'Rezervare pentru vacanță.', NULL, NULL, NULL, NULL),
 
-                -- CAR ID 2: Audi A4 Black (Status: available on 2025-05-29)
-                (2, 4, '2025-05-10', '2025-05-14', 'completed', 288.00, 'paid', 'Delegație corporativă.', 7800, 8200, 100, 90),
-                (2, 5, '2025-06-03', '2025-06-07', 'pending', 288.00, 'unpaid', 'Rezervare pentru conferință.', NULL, NULL, NULL, NULL),
+                -- CAR ID 2: Audi A4 Black (Status: available on 2025-06-16)
+                (2, 4, '2025-06-05', '2025-06-09', 'completed', 288.00, 'paid', 'Delegație corporativă.', 7800, 8200, 100, 90),
+                (2, 5, '2025-06-20', '2025-06-24', 'pending', 288.00, 'unpaid', 'Rezervare pentru conferință.', NULL, NULL, NULL, NULL),
 
-                -- CAR ID 3: Audi A4 White (Status: pending on 2025-05-29)
-                (3, 6, '2025-05-20', '2025-05-24', 'completed', 280.00, 'paid', 'Călătorie personală.', 21500, 22000, 100, 80),
-                (3, 7, '2025-05-30', '2025-06-03', 'pending', 280.00, 'partial', 'Eveniment special.', NULL, NULL, NULL, NULL),
+                -- CAR ID 3: Audi A4 White (Status: pending on 2025-06-16)
+                (3, 6, '2025-06-08', '2025-06-12', 'completed', 280.00, 'paid', 'Călătorie personală.', 21500, 22000, 100, 80),
+                (3, 7, '2025-06-17', '2025-06-21', 'pending', 280.00, 'partial', 'Eveniment special.', NULL, NULL, NULL, NULL),
 
-                -- CAR ID 4: BMW X5 White (Status: available on 2025-05-29)
-                (4, 8, '2025-05-01', '2025-05-05', 'completed', 380.00, 'paid', 'Test drive extins.', 5200, 5600, 100, 75),
-                (4, 9, '2025-06-10', '2025-06-15', 'pending', 475.00, 'unpaid', 'Vacanță la munte.', NULL, NULL, NULL, NULL),
+                -- CAR ID 4: BMW X5 White (Status: available on 2025-06-16)
+                (4, 8, '2025-06-02', '2025-06-06', 'completed', 380.00, 'paid', 'Test drive extins.', 5200, 5600, 100, 75),
+                (4, 9, '2025-06-25', '2025-06-30', 'pending', 475.00, 'unpaid', 'Vacanță la munte.', NULL, NULL, NULL, NULL),
                 
-                -- CAR ID 5: BMW X5 Black (Status: rented on 2025-05-29)
-                (5, 10, '2025-05-18', '2025-05-22', 'completed', 360.00, 'paid', 'Necesități de transport urgente.', 21800, 22300, 100, 60),
-                (5, 11, '2025-05-28', '2025-06-02', 'active', 450.00, 'paid', 'Proiect pe termen scurt.', 22350, NULL, 100, NULL),
+                -- CAR ID 5: BMW X5 Black (Status: rented on 2025-06-16)
+                (5, 10, '2025-06-03', '2025-06-07', 'completed', 360.00, 'paid', 'Necesități de transport urgente.', 21800, 22300, 100, 60),
+                (5, 11, '2025-06-15', '2025-06-20', 'active', 450.00, 'paid', 'Proiect pe termen scurt.', 22350, NULL, 100, NULL),
 
                 -- CAR ID 6: BMW X5 Blue (Status: maintenance) - No rentals planned during maintenance
                 
                 -- CAR ID 7: Chevrolet Equinox Black (Status: available)
-                (7, 12, '2025-05-05', '2025-05-09', 'completed', 220.00, 'paid', 'Familie în vizită.', 28000, 28500, 100, 70),
-                (7, 13, '2025-06-08', '2025-06-12', 'pending', 220.00, 'unpaid', 'Excursie de weekend.', NULL, NULL, NULL, NULL),
+                (7, 12, '2025-06-01', '2025-06-05', 'completed', 220.00, 'paid', 'Familie în vizită.', 28000, 28500, 100, 70),
+                (7, 13, '2025-06-23', '2025-06-27', 'pending', 220.00, 'unpaid', 'Excursie de weekend.', NULL, NULL, NULL, NULL),
 
                 -- CAR ID 8: Chevrolet Equinox Silver (Status: pending)
-                (8, 14, '2025-05-15', '2025-05-19', 'completed', 220.00, 'paid', 'Călătorie în afara orașului.', 30700, 31200, 100, 85),
-                (8, 15, '2025-06-01', '2025-06-05', 'pending', 220.00, 'unpaid', 'Rezervare client fidel.', NULL, NULL, NULL, NULL),
+                (8, 14, '2025-06-07', '2025-06-11', 'completed', 220.00, 'paid', 'Călătorie în afara orașului.', 30700, 31200, 100, 85),
+                (8, 15, '2025-06-18', '2025-06-22', 'pending', 220.00, 'unpaid', 'Rezervare client fidel.', NULL, NULL, NULL, NULL),
 
                 -- CAR ID 10: Dacia Logan White (Status: rented)
-                (10, 1, '2025-05-25', '2025-06-01', 'active', 192.00, 'paid', 'Închiriere economică.', 11800, NULL, 90, NULL),
+                (10, 1, '2025-06-13', '2025-06-19', 'active', 192.00, 'paid', 'Închiriere economică.', 11800, NULL, 90, NULL),
 
                 -- CAR ID 11: Dacia Logan Blue (Status: pending)
-                (11, 2, '2025-05-31', '2025-06-04', 'pending', 120.00, 'unpaid', 'Pentru treburi administrative.', NULL, NULL, NULL, NULL),
+                (11, 2, '2025-06-17', '2025-06-21', 'pending', 120.00, 'unpaid', 'Pentru treburi administrative.', NULL, NULL, NULL, NULL),
 
                 -- CAR ID 13: Ford Escape Silver (Status: rented)
-                (13, 3, '2025-05-26', '2025-05-30', 'active', 300.00, 'paid', 'SUV confortabil pentru drum lung.', 25000, NULL, 90, NULL),
+                (13, 3, '2025-06-14', '2025-06-18', 'active', 300.00, 'paid', 'SUV confortabil pentru drum lung.', 25000, NULL, 90, NULL),
 
                 -- CAR ID 14: Ford Mustang Red (Status: pending)
-                (14, 4, '2025-06-02', '2025-06-05', 'pending', 270.00, 'partial', 'Experiență Mustang.', NULL, NULL, NULL, NULL),
+                (14, 4, '2025-06-19', '2025-06-22', 'pending', 270.00, 'partial', 'Experiență Mustang.', NULL, NULL, NULL, NULL),
                 
                 -- CAR ID 16: Tesla Model 3 Blue (Status: rented)
-                (16, 5, '2025-05-29', '2025-06-03', 'active', 475.00, 'paid', 'Testare mașină electrică.', 8500, NULL, 95, NULL),
+                (16, 5, '2025-06-15', '2025-06-20', 'active', 475.00, 'paid', 'Testare mașină electrică.', 8500, NULL, 95, NULL),
 
                 -- CAR ID 17: Tesla Model 3 White (Status: pending)
-                (17, 6, '2025-05-12', '2025-05-16', 'completed', 380.00, 'paid', 'Client interesat de EV.', 15000, 15600, 100, 65),
-                (17, 7, '2025-06-01', '2025-06-04', 'pending', 285.00, 'unpaid', 'Rezervare pentru evaluare.', NULL, NULL, NULL, NULL),
+                (17, 6, '2025-06-04', '2025-06-08', 'completed', 380.00, 'paid', 'Client interesat de EV.', 15000, 15600, 100, 65),
+                (17, 7, '2025-06-18', '2025-06-21', 'pending', 285.00, 'unpaid', 'Rezervare pentru evaluare.', NULL, NULL, NULL, NULL),
 
                 -- CAR ID 19: Mercedes C-Class Silver (Status: rented)
-                (19, 8, '2025-05-27', '2025-05-31', 'active', 360.00, 'paid', 'Eleganță pentru eveniment.', 7500, NULL, 100, NULL),
+                (19, 8, '2025-06-14', '2025-06-18', 'active', 360.00, 'paid', 'Eleganță pentru eveniment.', 7500, NULL, 100, NULL),
 
                 -- CAR ID 21: Honda CR-V (Status: pending)
-                (21, 9, '2025-05-10', '2025-05-14', 'completed', 260.00, 'paid', 'Familie, spațiu necesar.', 9100, 9500, 100, 80),
-                (21, 10, '2025-06-03', '2025-06-07', 'pending', 260.00, 'unpaid', 'Călătorie de vară.', NULL, NULL, NULL, NULL),
+                (21, 9, '2025-06-02', '2025-06-06', 'completed', 260.00, 'paid', 'Familie, spațiu necesar.', 9100, 9500, 100, 80),
+                (21, 10, '2025-06-20', '2025-06-24', 'pending', 260.00, 'unpaid', 'Călătorie de vară.', NULL, NULL, NULL, NULL),
 
                 -- CAR ID 23: Jeep Wrangler (Status: rented)
-                (23, 11, '2025-05-28', '2025-06-02', 'active', 400.00, 'paid', 'Aventură off-road.', 15000, NULL, 80, NULL),
+                (23, 11, '2025-06-15', '2025-06-20', 'active', 400.00, 'paid', 'Aventură off-road.', 15000, NULL, 80, NULL),
 
                 -- CAR ID 25: Lexus ES (Status: pending)
-                (25, 12, '2025-06-05', '2025-06-09', 'pending', 340.00, 'partial', 'Confort și lux.', NULL, NULL, NULL, NULL),
+                (25, 12, '2025-06-21', '2025-06-25', 'pending', 340.00, 'partial', 'Confort și lux.', NULL, NULL, NULL, NULL),
                 
                 -- CAR ID 27: Nissan Altima (Status: rented)
-                (27, 13, '2025-05-25', '2025-05-30', 'active', 275.00, 'paid', 'Sedan fiabil pentru oraș.', 19200, NULL, 70, NULL),
+                (27, 13, '2025-06-13', '2025-06-18', 'active', 275.00, 'paid', 'Sedan fiabil pentru oraș.', 19200, NULL, 70, NULL),
 
                 -- CAR ID 28: Porsche Cayenne (Status: pending)
-                (28, 14, '2025-06-07', '2025-06-11', 'pending', 520.00, 'unpaid', 'Ocazie specială.', NULL, NULL, NULL, NULL),
+                (28, 14, '2025-06-22', '2025-06-26', 'pending', 520.00, 'unpaid', 'Ocazie specială.', NULL, NULL, NULL, NULL),
                 
                 -- CAR ID 30: Toyota Camry (Status: rented)
-                (30, 15, '2025-05-26', '2025-05-31', 'active', 340.00, 'paid', 'Hybrid eficient pentru business.', 12000, NULL, 85, NULL),
+                (30, 15, '2025-06-14', '2025-06-19', 'active', 340.00, 'paid', 'Hybrid eficient pentru business.', 12000, NULL, 85, NULL),
 
                 -- CAR ID 32: Volkswagen Golf (Status: pending)
-                (32, 16, '2025-05-19', '2025-05-23', 'completed', 220.00, 'paid', 'Mașină agilă pentru oraș.', 9600, 9800, 100, 65),
-                (32, 17, '2025-06-02', '2025-06-06', 'pending', 220.00, 'unpaid', 'Închiriere standard.', NULL, NULL, NULL, NULL)
+                (32, 16, '2025-06-10', '2025-06-14', 'completed', 220.00, 'paid', 'Mașină agilă pentru oraș.', 9600, 9800, 100, 65),
+                (32, 17, '2025-06-19', '2025-06-23', 'pending', 220.00, 'unpaid', 'Închiriere standard.', NULL, NULL, NULL, NULL)
             `);
-            console.log('Accurate rental data around May 29, 2025 created successfully');
+            console.log('Accurate rental data around June 16, 2025 created successfully');
         } else {
             console.log(`Database already contains ${carCount[0].count} cars. Skipping sample data.`);
         }

@@ -232,19 +232,49 @@ export const generateInvoice = async (customer: Customer, rental: RentalExtended
 
         // Main title
         addCenteredText('FACTURA', 18, boldFont, rgb(0, 0, 0));
-        nextLine(40);
+        nextLine(50);
 
-        // Company information section
-        addText('Furnizor:', margin, 12, boldFont);
-        nextLine(20);
-        addText('SC AUTO RENT M SRL', margin + 20, 14, boldFont, rgb(0.098, 0.463, 0.824));
-        nextLine(20);
-        addText('CIF: RO12345678', margin + 20, 10);
-        nextLine(15);
-        addText('Adresa: Splaiul Independentei Nr. 240, Bucuresti', margin + 20, 10);
-        nextLine(15);
-        addText('Telefon: +40 123 456 789', margin + 20, 10);
-        nextLine(30);
+        // Add company details underneath the title on the right
+        const companyX = pageWidth - margin - 130; // X position for company details
+        const companyStartY = currentY; // Current Y position after title
+
+        page.drawText('SC AUTO RENT M SRL', {
+            x: companyX,
+            y: companyStartY,
+            size: 12,
+            font: boldFont,
+            color: rgb(0.098, 0.463, 0.824)
+        });
+
+        page.drawText('CIF: RO12345678', {
+            x: companyX,
+            y: companyStartY - 15,
+            size: 9,
+            font: regularFont
+        });
+
+        page.drawText('Splaiul Independentei Nr. 240', {
+            x: companyX,
+            y: companyStartY - 30,
+            size: 9,
+            font: regularFont
+        });
+
+        page.drawText('Bucuresti', {
+            x: companyX,
+            y: companyStartY - 45,
+            size: 9,
+            font: regularFont
+        });
+
+        page.drawText('Tel: +40 123 456 789', {
+            x: companyX,
+            y: companyStartY - 60,
+            size: 9,
+            font: regularFont
+        });
+
+        nextLine(10); // Extra spacing after company details
 
         // Invoice details
         addText('Data emiterii: ', margin, 12);

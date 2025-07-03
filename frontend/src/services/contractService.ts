@@ -217,6 +217,48 @@ export const generateContract = async (customer: Customer, rental?: RentalExtend
         addCenteredText('PROCES VERBAL DE PREDARE - PRIMIRE', 14, boldFont);
         nextLine(40);
 
+        // Add company details underneath the title on the right
+        const companyX = pageWidth - margin - 130; // X position for company details
+        const companyStartY = currentY; // Current Y position after titles
+
+        page.drawText('SC AUTO RENT M SRL', {
+            x: companyX,
+            y: companyStartY,
+            size: 12,
+            font: boldFont,
+            color: rgb(0.098, 0.463, 0.824)
+        });
+
+        page.drawText('CIF: RO12345678', {
+            x: companyX,
+            y: companyStartY - 15,
+            size: 9,
+            font: regularFont
+        });
+
+        page.drawText('Splaiul Independentei Nr. 240', {
+            x: companyX,
+            y: companyStartY - 30,
+            size: 9,
+            font: regularFont
+        });
+
+        page.drawText('Bucuresti', {
+            x: companyX,
+            y: companyStartY - 45,
+            size: 9,
+            font: regularFont
+        });
+
+        page.drawText('Tel: +40 123 456 789', {
+            x: companyX,
+            y: companyStartY - 60,
+            size: 9,
+            font: regularFont
+        });
+
+        nextLine(10); // Extra spacing after company details
+
         // Date and parties section
         addText(`Incheiat azi, data `, margin, 12);
         addTextWithUnderline(rentalDate, margin + regularFont.widthOfTextAtSize('Incheiat azi, data ', 12), 12, boldFont);
